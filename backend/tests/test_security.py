@@ -79,3 +79,11 @@ def test_database_url_scheme_is_normalised_for_psycopg():
         == "postgresql+psycopg://u:p@h:5432/d"
     )
     assert Settings(database_url="postgresql://u@h/d", _env_file=None).database_url == "postgresql+psycopg://u@h/d"
+
+
+def test_list_settings_accept_comma_separated_env_values(monkeypatch):
+    from app.config import Settings
+
+    monkeypatch.setenv("ALLOWED_ORIGINS", "https://a.example, https://b.example")
+    s = Settings()
+    assert s.allowed_origins == ["https://a.example", "https://b.example"]

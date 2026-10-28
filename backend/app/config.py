@@ -8,10 +8,10 @@ import base64
 from decimal import Decimal
 from functools import lru_cache
 from pathlib import Path
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import Field, field_validator, model_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 
@@ -27,7 +27,8 @@ class Settings(BaseSettings):
     # state-changing requests must come from it.
     frontend_url: str = "http://localhost:5173"
     # Only needed when the SPA is served from a different origin than the API.
-    allowed_origins: list[str] = Field(default_factory=list)
+    # Comma-separated in the environment (NoDecode: not parsed as JSON).
+    allowed_origins: Annotated[list[str], NoDecode] = Field(default_factory=list)
     # Absolute path to the built SPA. When set, the API serves it (same-origin deploy).
     frontend_dist: str | None = None
 
