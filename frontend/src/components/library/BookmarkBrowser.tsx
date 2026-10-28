@@ -49,6 +49,32 @@ export function BookmarkBrowser({ result, lockedTopic }: { result: ScanResult; l
   const [showFilters, setShowFilters] = useState(false)
   const [now] = useState(() => Date.now())
   const searchRef = useRef<HTMLInputElement>(null)
+
+  // The input owns its text; the URL follows after a short pause. Binding the
+  // input straight to the URL dropped keystrokes, because router updates land
+  // asynchronously and each keypress was applied to a stale value.
+  const [query, setQuery] = useState(filters.q)
+  const pushedQ = useRef(filters.q)
+  useEffect(() => {
+    if (query === filters.q) return
+    const t = setTimeout(() => {
+      pushedQ.current = query
+      update({ q: query })
+    }, 200)
+    return () => clearTimeout(t)
+    // Re-check when the URL value changes too: router updates can briefly report
+    // an older value mid-transition. `update` is recreated every render.
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
+  }, [query, filters.q])
+  // Adopt changes that didn't come from typing (Clear all, back/forward).
+  const [seenQ, setSeenQ] = useState(filters.q)
+  if (filters.q !== seenQ) {
+    setSeenQ(filters.q)
+    if (filters.q !== pushedQ.current) {
+      pushedQ.current = filters.q
+      setQuery(filters.q)
+    }
+  }
   const source = useMemo(() => (result.isDemo ? demoLibrary(result, now) : liveLibrary), [result, now])
 
   const [page, setPage] = useState<LibraryPage | null>(null)
@@ -124,13 +150,13 @@ export function BookmarkBrowser({ result, lockedTopic }: { result: ScanResult; l
             id="library-search"
             ref={searchRef}
             type="search"
-            value={filters.q}
-            onChange={(e) => update({ q: e.target.value })}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
             placeholder={lockedTopic ? `Search ${TOPIC_BY_ID[lockedTopic].short}…` : 'Search text, authors, links…'}
             className="h-full w-full min-w-0 bg-transparent font-mono text-sm outline-none placeholder:text-paper-faint/70 [&::-webkit-search-cancel-button]:hidden"
           />
-          {filters.q ? (
-            <button type="button" onClick={() => update({ q: '' })} aria-label="Clear search" className="text-paper-faint hover:text-paper">
+          {query ? (
+            <button type="button" onClick={() => setQuery('')} aria-label="Clear search" className="text-paper-faint hover:text-paper">
               <X size={14} />
             </button>
           ) : (
