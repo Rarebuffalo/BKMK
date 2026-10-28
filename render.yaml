@@ -1,20 +1,27 @@
-# Render Blueprint: one Docker web service + managed Postgres.
-# Secrets marked sync: false are entered in the Render dashboard, never committed.
+# Render Blueprint: the API as one free Docker web service.
+# The frontend is on Vercel and proxies /api/* here; Postgres is on Neon.
+# Values marked sync: false are entered in the Render dashboard, never committed.
 services:
   - type: web
-    name: bkmk
+    name: bkmk-api
     runtime: docker
-    plan: starter
-    healthCheckPath: /api/health
+    plan: free
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    # Database-free probe: Render checks every few seconds, and a DB query here
+    # would keep Neon's compute from ever scaling to zero.
+    healthCheckPath: /api/health/live
+    autoDeploy: true
     envVars:
       - key: ENVIRONMENT
         value: production
       - key: DATABASE_URL
-        fromDatabase: { name: bkmk-db, property: connectionString }
+        sync: false # Neon direct connection string (not -pooler), with sslmode=require
       - key: FRONTEND_URL
-        sync: false # e.g. https://bkmk.onrender.com
+        sync: false # https://<your-app>.vercel.app — the only origin browsers use
       - key: X_REDIRECT_URI
-        sync: false # https://<host>/api/auth/x/callback — must match the X app exactly
+        sync: false # https://<your-app>.vercel.app/api/auth/x/callback — must match the X app exactly
       - key: X_CLIENT_ID
         sync: false
       - key: X_CLIENT_SECRET
@@ -23,13 +30,13 @@ services:
         generateValue: true
       - key: TOKEN_ENCRYPTION_KEY
         sync: false # 32-byte url-safe base64: uv run python -m app.cli gen-secrets
+      - key: X_DAILY_BUDGET_USD
+        value: "2.00"
       - key: SCAN_MAX_BOOKMARKS
-        value: "800"
+        value: "200"
       - key: SCAN_COOLDOWN_SECONDS
         value: "3600"
-
-databases:
-  - name: bkmk-db
-    plan: basic-256mb
-    databaseName: bkmk
-    user: bkmk
+      - key: ALLOWED_X_USERNAMES
+        sync: false # optional private-beta allowlist, comma-separated; leave empty for anyone
+      - key: DATA_RETENTION_DAYS
+        value: "90"
