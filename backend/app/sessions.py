@@ -37,6 +37,7 @@ def create_session(db: Session, response: Response, user: User, settings: Settin
         expires_at=utcnow() + timedelta(hours=settings.session_ttl_hours),
     )
     db.add(row)
+    user.last_seen_at = utcnow()
     response.set_cookie(
         cookie_name(settings),
         raw,

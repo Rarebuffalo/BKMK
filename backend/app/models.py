@@ -43,6 +43,8 @@ class User(TimestampMixin, Base):
     display_name: Mapped[str | None] = mapped_column(String(100))
     profile_image_url: Mapped[str | None] = mapped_column(String(500))
     last_scan_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Last sign-in or scan. Drives the inactivity retention policy.
+    last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     oauth_account: Mapped["OAuthAccount | None"] = relationship(back_populates="user", cascade="all, delete-orphan")
 

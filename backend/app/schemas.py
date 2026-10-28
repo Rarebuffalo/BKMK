@@ -72,6 +72,8 @@ class MeOut(Out):
     authenticated: bool
     x_configured: bool
     api_mode: Literal["live", "fixture"]
+    # Days of inactivity after which stored data is deleted (0 = kept until deleted).
+    data_retention_days: int
     user: UserOut | None = None
     connection: ConnectionOut | None = None
     csrf_token: str | None = None

@@ -1,4 +1,5 @@
 import logging
+import threading
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -13,9 +14,10 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from .api import auth, data, scans
 from .config import Settings, get_settings
 from .database import get_db, get_sessionmaker
+from .integrations import make_x_client
 from .logging_setup import configure_logging
+from .services.retention import run_maintenance
 from .services.scan_service import fail_interrupted_scans
-from .sessions import purge_expired
 
 log = logging.getLogger("bkmk")
 
@@ -46,13 +48,22 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or get_settings()
     configure_logging()
 
+    def maintenance() -> None:
+        db = get_sessionmaker()()
+        try:
+            run_maintenance(db, settings, lambda: make_x_client(settings))
+        except Exception:  # noqa: BLE001 - housekeeping must never take the API down
+            db.rollback()
+            log.exception("maintenance failed")
+        finally:
+            db.close()
+
     @asynccontextmanager
     async def lifespan(_: FastAPI):
         settings.require_secrets()
         db = get_sessionmaker()()
         try:
             n = fail_interrupted_scans(db)
-            purge_expired(db)
             db.commit()
             if n:
                 log.warning("marked interrupted scans failed", extra={"count": n})
@@ -60,8 +71,20 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             log.exception("startup maintenance failed")
         finally:
             db.close()
+        stop = threading.Event()
+        if settings.environment != "test":
+            # Free hosts restart often, so this also runs on every boot; the loop
+            # covers long-lived instances. A plain thread: no scheduler service needed.
+            def loop() -> None:
+                while True:
+                    maintenance()
+                    if stop.wait(settings.maintenance_interval_hours * 3600):
+                        return
+
+            threading.Thread(target=loop, name="bkmk-maintenance", daemon=True).start()
         log.info("bkmk started", extra={"environment": settings.environment, "x_api_mode": settings.x_api_mode})
         yield
+        stop.set()
 
     docs = settings.environment != "production"
     app = FastAPI(

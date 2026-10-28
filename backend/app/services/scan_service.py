@@ -85,6 +85,7 @@ def create_scan(db: Session, user: User, settings: Settings, mode: str | None) -
         events=[],
     )
     db.add(scan)
+    user.last_seen_at = utcnow()
     db.commit()
     return scan, True
 

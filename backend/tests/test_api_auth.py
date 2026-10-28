@@ -189,6 +189,20 @@ def test_logout_ends_session(client):
     assert client.get("/api/auth/me").json()["authenticated"] is False
 
 
+def test_logout_keeps_the_library_for_the_next_sign_in(client, db):
+    from .conftest import scan
+
+    csrf = login(client)
+    scan(client, csrf)
+    r = client.post("/api/auth/logout", headers={"X-CSRF-Token": csrf})
+    assert r.status_code == 204 and "Max-Age=0" in r.headers["set-cookie"]
+    assert client.get("/api/dashboard").status_code == 401
+    assert db.scalar(select(OAuthAccount)) is not None  # sign-out isn't disconnect
+    login(client)
+    assert client.get("/api/dashboard").json()["handle"] == "bkmk_fixture"
+    assert client.get("/api/auth/me").json()["dataRetentionDays"] == 90
+
+
 def test_auth_endpoints_are_rate_limited(client):
     codes = [client.get("/api/auth/x/start", follow_redirects=False).status_code for _ in range(25)]
     assert 429 in codes

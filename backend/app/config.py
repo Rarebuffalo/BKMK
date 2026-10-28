@@ -67,6 +67,11 @@ class Settings(BaseSettings):
     # Optional private-beta allowlist of X usernames (comma-separated). Empty = anyone.
     allowed_x_usernames: Annotated[list[str], NoDecode] = Field(default_factory=list)
 
+    # ── Retention ──
+    # Accounts with no sign-in or scan for this many days are revoked and deleted. 0 = keep.
+    data_retention_days: int = Field(default=90, ge=0)
+    maintenance_interval_hours: float = 6.0
+
     # ── Abuse protection ──
     auth_rate_limit_per_minute: int = 20
     max_request_bytes: int = 64_000

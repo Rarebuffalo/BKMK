@@ -201,7 +201,11 @@ def fixture_authorize(state: str = Query(max_length=128), settings: Settings = D
 
 @router.get("/me", response_model=MeOut)
 def me(current: CurrentSession | None = Depends(optional_session), settings: Settings = Depends(get_settings)) -> MeOut:
-    base = {"x_configured": settings.x_configured, "api_mode": settings.x_api_mode}
+    base = {
+        "x_configured": settings.x_configured,
+        "api_mode": settings.x_api_mode,
+        "data_retention_days": settings.data_retention_days,
+    }
     if current is None:
         return MeOut(authenticated=False, **base)
     u, acct = current.user, current.user.oauth_account
