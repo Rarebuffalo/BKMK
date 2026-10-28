@@ -4,10 +4,12 @@ import { useSearchParams } from 'react-router-dom'
 import { CONTENT_TYPES, TOPIC_BY_ID, TOPICS } from '../../domain/topics'
 import type { ContentType, ScanResult, TopicId } from '../../domain/types'
 import { cx } from '../../lib/cx'
-import { activeFilterCount, applyFilters, EMPTY_FILTERS, type DateRange, type LibraryFilters, type SortKey } from '../../lib/filters'
+import { isApiError } from '../../api/client'
+import { activeFilterCount, EMPTY_FILTERS, type DateRange, type LibraryFilters, type SortKey } from '../../lib/filters'
+import { demoLibrary, liveLibrary, type LibraryPage } from '../../lib/librarySource'
 import { fmt } from '../../lib/format'
 import { Button } from '../ui/Button'
-import { Chip, EmptyState } from '../ui/primitives'
+import { Chip, EmptyState, ErrorState } from '../ui/primitives'
 import { BookmarkCard } from './BookmarkCard'
 
 const PAGE = 30
@@ -44,33 +46,58 @@ const toggle = <T,>(xs: T[], x: T) => (xs.includes(x) ? xs.filter((y) => y !== x
 
 export function BookmarkBrowser({ result, lockedTopic }: { result: ScanResult; lockedTopic?: TopicId }) {
   const [filters, update, clear] = useFilters(lockedTopic)
-  const [limit, setLimit] = useState(PAGE)
   const [showFilters, setShowFilters] = useState(false)
   const [now] = useState(() => Date.now())
   const searchRef = useRef<HTMLInputElement>(null)
+  const source = useMemo(() => (result.isDemo ? demoLibrary(result, now) : liveLibrary), [result, now])
 
-  const scope = useMemo(() => (lockedTopic ? result.bookmarks.filter((b) => b.topic === lockedTopic) : result.bookmarks), [result, lockedTopic])
-  const items = useMemo(() => applyFilters(scope, filters, now), [scope, filters, now])
-  const authors = useMemo(() => {
-    const m = new Map<string, number>()
-    for (const b of scope) if (b.accessible) m.set(b.author.handle, (m.get(b.author.handle) ?? 0) + 1)
-    return [...m.entries()].sort((a, b) => b[1] - a[1])
-  }, [scope])
-  const typeCounts = useMemo(() => {
-    const m: Partial<Record<ContentType, number>> = {}
-    for (const b of scope) if (b.accessible) m[b.contentType] = (m[b.contentType] ?? 0) + 1
-    return m
-  }, [scope])
-  const unavailable = scope.filter((b) => !b.accessible).length
-  const active = activeFilterCount(filters) - (lockedTopic ? 1 : 0)
-
-  // Reset pagination whenever the result set changes shape.
+  const [page, setPage] = useState<LibraryPage | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [reload, setReload] = useState(0)
   const key = JSON.stringify(filters)
-  const [lastKey, setLastKey] = useState(key)
-  if (key !== lastKey) {
-    setLastKey(key)
-    setLimit(PAGE)
+
+  // First page whenever filters change. Live search is debounced and cancellable.
+  useEffect(() => {
+    const ctrl = new AbortController()
+    const t = setTimeout(
+      () => {
+        setLoading(true)
+        source
+          .query(JSON.parse(key) as LibraryFilters, 0, PAGE, ctrl.signal)
+          .then((p) => {
+            setPage(p)
+            setError(null)
+          })
+          .catch((e: Error) => {
+            if (e.name !== 'AbortError') setError(isApiError(e) ? e.message : 'Couldn’t load bookmarks.')
+          })
+          .finally(() => !ctrl.signal.aborted && setLoading(false))
+      },
+      source.remote ? 250 : 0,
+    )
+    return () => {
+      clearTimeout(t)
+      ctrl.abort()
+    }
+  }, [source, key, reload])
+
+  const loadMore = () => {
+    if (!page) return
+    setLoading(true)
+    source
+      .query(filters, page.items.length, PAGE)
+      .then((p) => setPage({ ...p, items: [...page.items, ...p.items] }))
+      .catch((e: Error) => setError(isApiError(e) ? e.message : 'Couldn’t load more bookmarks.'))
+      .finally(() => setLoading(false))
   }
+
+  const items = page?.items ?? []
+  const total = page?.total ?? 0
+  const authors = page?.facets.authors ?? []
+  const typeCounts = page?.facets.types ?? {}
+  const unavailable = page?.facets.unavailable ?? 0
+  const active = activeFilterCount(filters) - (lockedTopic ? 1 : 0)
 
   // "/" focuses search, like most developer tools.
   useEffect(() => {
@@ -152,9 +179,9 @@ export function BookmarkBrowser({ result, lockedTopic }: { result: ScanResult; l
             <span className="eyebrow mb-2 block text-paper-faint">Author</span>
             <select value={filters.author} onChange={(e) => update({ author: e.target.value })} className={cx(selectCls, 'w-full')}>
               <option value="">Anyone</option>
-              {authors.map(([h, n]) => (
-                <option key={h} value={h}>
-                  @{h} ({n})
+              {authors.map((a) => (
+                <option key={a.handle} value={a.handle}>
+                  @{a.handle} ({a.count})
                 </option>
               ))}
             </select>
@@ -183,7 +210,8 @@ export function BookmarkBrowser({ result, lockedTopic }: { result: ScanResult; l
 
       <div className="mt-5 mb-3 flex items-center justify-between font-mono text-xs text-paper-faint" aria-live="polite">
         <span>
-          {fmt(items.length)} {items.length === 1 ? 'bookmark' : 'bookmarks'}
+          {page ? `${fmt(total)} ${total === 1 ? 'bookmark' : 'bookmarks'}` : 'loading…'}
+          {loading && page && <span className="ml-2 animate-blink">▌</span>}
           {filters.author && (
             <button type="button" onClick={() => update({ author: '' })} className="ml-2 inline-flex items-center gap-1 rounded-xs border border-line px-1.5 text-paper-dim hover:text-paper">
               @{filters.author} <X size={10} />
@@ -197,7 +225,15 @@ export function BookmarkBrowser({ result, lockedTopic }: { result: ScanResult; l
         )}
       </div>
 
-      {items.length === 0 ? (
+      {error ? (
+        <ErrorState code="LIBRARY" title="Couldn’t load your bookmarks" body={error} action={<Button onClick={() => setReload((r) => r + 1)}>Try again</Button>} />
+      ) : !page ? (
+        <div className="grid gap-3 xl:grid-cols-2" aria-busy>
+          {Array.from({ length: 4 }, (_, i) => (
+            <div key={i} className="panel h-36 animate-pulse bg-ink-2" />
+          ))}
+        </div>
+      ) : items.length === 0 ? (
         <div className="panel">
           <EmptyState
             title={filters.q ? `Nothing matches “${filters.q}”` : 'No bookmarks match these filters'}
@@ -208,15 +244,15 @@ export function BookmarkBrowser({ result, lockedTopic }: { result: ScanResult; l
       ) : (
         <>
           <div className="grid gap-3 xl:grid-cols-2">
-            {items.slice(0, limit).map((b) => (
+            {items.map((b) => (
               <BookmarkCard key={b.id} bookmark={b} query={filters.q} isDemo={result.isDemo} onAuthor={(h) => update({ author: h })} />
             ))}
           </div>
-          {items.length > limit && (
+          {total > items.length && (
             <div className="mt-6 flex flex-col items-center gap-2">
-              <Button onClick={() => setLimit((l) => l + PAGE)}>Load {Math.min(PAGE, items.length - limit)} more</Button>
+              <Button onClick={loadMore} loading={loading}>Load {Math.min(PAGE, total - items.length)} more</Button>
               <span className="font-mono text-[11px] text-paper-faint">
-                showing {limit} of {fmt(items.length)}
+                showing {items.length} of {fmt(total)}
               </span>
             </div>
           )}
