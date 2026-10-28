@@ -24,6 +24,6 @@ RUN useradd --system --uid 10001 bkmk && chown -R bkmk /app
 USER bkmk
 ENV PATH="/opt/venv/bin:$PATH" FRONTEND_DIST=/app/static PORT=8000
 EXPOSE 8000
-HEALTHCHECK --interval=30s --timeout=5s --start-period=20s CMD python -c "import urllib.request,os; urllib.request.urlopen(f'http://127.0.0.1:{os.environ[\"PORT\"]}/api/health', timeout=4)"
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s CMD python -c "import urllib.request,os; urllib.request.urlopen(f'http://127.0.0.1:{os.environ[\"PORT\"]}/api/health/live', timeout=4)"
 # Migrations run on boot; they're idempotent and transactional.
 CMD ["sh", "-c", "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT} --proxy-headers --forwarded-allow-ips='*'"]

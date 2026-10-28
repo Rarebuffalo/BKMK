@@ -99,6 +99,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         log.exception("unhandled error", extra={"path": request.url.path})
         return JSONResponse({"code": "internal_error", "message": "Something went wrong."}, status_code=500)
 
+    @app.get("/api/health/live", tags=["health"])
+    def liveness() -> dict:
+        # For the host's frequent health probes. Deliberately skips the database so the
+        # probes don't keep a scale-to-zero Postgres (Neon) awake around the clock.
+        return {"status": "ok"}
+
     @app.get("/api/health", tags=["health"])
     def health(db: Session = Depends(get_db)) -> JSONResponse:
         try:

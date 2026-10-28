@@ -2,7 +2,9 @@ import re
 
 import pytest
 from sqlalchemy import select
+from sqlalchemy.exc import OperationalError
 
+from app.database import get_db
 from app.models import OAuthAccount, OAuthState, User
 
 from .conftest import login
@@ -40,6 +42,22 @@ def test_health_reports_database_without_secrets(client):
     body = client.get("/api/health").json()
     assert body["status"] == "ok" and body["database"] == "ok"
     assert "secret" not in str(body).lower()
+
+
+def test_health_degrades_when_database_is_down_and_liveness_never_touches_it(client):
+    class DownDb:
+        def execute(self, *_):
+            raise OperationalError("SELECT 1", {}, Exception("connection refused"))
+
+    client.app.dependency_overrides[get_db] = lambda: DownDb()
+    try:
+        r = client.get("/api/health")
+        assert r.status_code == 503 and r.json()["database"] == "unavailable"
+        assert "connection refused" not in r.text
+        live = client.get("/api/health/live")
+        assert live.status_code == 200 and live.json() == {"status": "ok"}
+    finally:
+        client.app.dependency_overrides.clear()
 
 
 def test_start_sets_state_cookie_and_stores_only_hashes(client, db):
