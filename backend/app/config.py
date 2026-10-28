@@ -13,7 +13,6 @@ from typing import Literal
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 
 
@@ -65,6 +64,15 @@ class Settings(BaseSettings):
     # ── Abuse protection ──
     auth_rate_limit_per_minute: int = 20
     max_request_bytes: int = 64_000
+
+    @field_validator("database_url", mode="after")
+    @classmethod
+    def _psycopg_driver(cls, v: str) -> str:
+        # Managed Postgres (Render, Fly, Neon…) hands out postgres:// URLs; use psycopg 3.
+        for prefix in ("postgres://", "postgresql://"):
+            if v.startswith(prefix):
+                return "postgresql+psycopg://" + v[len(prefix) :]
+        return v
 
     @field_validator("allowed_origins", mode="before")
     @classmethod

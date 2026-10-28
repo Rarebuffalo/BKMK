@@ -71,3 +71,11 @@ def test_settings_validate_key_and_origins():
         Settings(token_encryption_key=base64.urlsafe_b64encode(b"short").decode(), _env_file=None)
     with pytest.raises(ValidationError, match=r"\*"):
         Settings(allowed_origins="*", _env_file=None)
+
+
+def test_database_url_scheme_is_normalised_for_psycopg():
+    assert (
+        Settings(database_url="postgres://u:p@h:5432/d", _env_file=None).database_url
+        == "postgresql+psycopg://u:p@h:5432/d"
+    )
+    assert Settings(database_url="postgresql://u@h/d", _env_file=None).database_url == "postgresql+psycopg://u@h/d"
