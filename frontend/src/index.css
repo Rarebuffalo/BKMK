@@ -1,0 +1,235 @@
+@import '@fontsource-variable/archivo/wdth.css';
+@import '@fontsource-variable/jetbrains-mono/index.css';
+@import '@fontsource/silkscreen/400.css';
+@import '@fontsource/silkscreen/700.css';
+@import 'tailwindcss';
+
+/* ── Design tokens ─────────────────────────────────────────────────────────
+   Documented in docs/design-system.md. Raw values live here once; Tailwind
+   utilities and the share-card canvas renderer both read from these. */
+:root {
+  --ink: #0a0c0a;
+  --ink-2: #111411;
+  --ink-3: #181c18;
+  --ink-4: #20261e;
+  --line: #2a3128;
+  --line-strong: #3d4739;
+  --paper: #ede9dd;
+  --paper-dim: #aeb3a4;
+  --paper-faint: #808a79;
+  --phosphor: #86f26b;
+  --phosphor-dim: #4c8f3b;
+  --phosphor-deep: #13300d;
+  --phosphor-ink: #0b1f07;
+  --signal: #72b8ff;
+  --amber: #ffb547;
+  --violet: #b9a0ff;
+  --danger: #ff6f61;
+
+  --topic-ai: #72b8ff;
+  --topic-engineering: #86f26b;
+  --topic-devtools: #3fd9c1;
+  --topic-startups: #ffb547;
+  --topic-growth: #ff8a5c;
+  --topic-design: #ff86bd;
+  --topic-security: #dcd65c;
+  --topic-research: #b9a0ff;
+  --topic-productivity: #d2a77c;
+  --topic-other: #5f675b;
+
+  --shadow-hard: 4px 4px 0 0 #000;
+  --shadow-hard-sm: 2px 2px 0 0 #000;
+
+  color-scheme: dark;
+}
+
+@theme {
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-ink-4: var(--ink-4);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-paper: var(--paper);
+  --color-paper-dim: var(--paper-dim);
+  --color-paper-faint: var(--paper-faint);
+  --color-phosphor: var(--phosphor);
+  --color-phosphor-dim: var(--phosphor-dim);
+  --color-phosphor-deep: var(--phosphor-deep);
+  --color-phosphor-ink: var(--phosphor-ink);
+  --color-signal: var(--signal);
+  --color-amber: var(--amber);
+  --color-violet: var(--violet);
+  --color-danger: var(--danger);
+
+  --font-sans: 'Archivo Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', ui-monospace, 'SFMono-Regular', monospace;
+  --font-pixel: 'Silkscreen', 'JetBrains Mono Variable', monospace;
+
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+
+  --ease-snap: cubic-bezier(0.2, 0.9, 0.1, 1);
+  --breakpoint-xs: 420px;
+}
+
+/* ── Base ─────────────────────────────────────────────────────────────── */
+@layer base {
+html {
+  background: var(--ink);
+  color: var(--paper);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+body {
+  margin: 0;
+  min-height: 100dvh;
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.5;
+  background:
+    radial-gradient(1200px 600px at 80% -10%, color-mix(in oklab, var(--phosphor) 6%, transparent), transparent 60%),
+    var(--ink);
+}
+::selection {
+  background: var(--phosphor);
+  color: var(--phosphor-ink);
+}
+:focus-visible {
+  outline: 2px solid var(--phosphor);
+  outline-offset: 2px;
+}
+button {
+  cursor: pointer;
+}
+button:disabled {
+  cursor: not-allowed;
+}
+}
+
+/* ── Typographic roles ─────────────────────────────────────────────────── */
+@utility display {
+  font-family: var(--font-sans);
+  font-stretch: 125%;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 0.95;
+}
+@utility eyebrow {
+  font-family: var(--font-pixel);
+  font-size: 11px;
+  line-height: 1.2;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+@utility data {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Surfaces ──────────────────────────────────────────────────────────── */
+@utility panel {
+  background: var(--ink-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+}
+@utility panel-raised {
+  background: var(--ink-3);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-hard);
+}
+
+/* Faint dot-matrix texture for hero/scan surfaces only. */
+@utility dotgrid {
+  background-image: radial-gradient(color-mix(in oklab, var(--paper) 9%, transparent) 1px, transparent 1px);
+  background-size: 16px 16px;
+}
+
+/* Scanlines: decorative, very low contrast, never over body text. */
+@utility scanlines {
+  position: relative;
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: repeating-linear-gradient(to bottom, transparent 0 2px, rgb(0 0 0 / 0.18) 2px 3px);
+    border-radius: inherit;
+  }
+}
+
+/* ── Motion ────────────────────────────────────────────────────────────── */
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+@keyframes pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  70% {
+    transform: scale(1.06);
+  }
+}
+@keyframes flicker {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  45% {
+    opacity: 0.85;
+  }
+  50% {
+    opacity: 0.4;
+  }
+  55% {
+    opacity: 0.9;
+  }
+}
+@keyframes ticker {
+  to {
+    transform: translateX(-50%);
+  }
+}
+@keyframes sweep {
+  from {
+    transform: translateY(-100%);
+  }
+  to {
+    transform: translateY(100%);
+  }
+}
+
+@utility animate-blink {
+  animation: blink 1.05s steps(1) infinite;
+}
+@utility animate-rise {
+  animation: rise 420ms var(--ease-snap) both;
+}
+@utility animate-pop {
+  animation: pop 380ms var(--ease-snap) both;
+}
+@utility animate-flicker {
+  animation: flicker 600ms steps(4) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+}
