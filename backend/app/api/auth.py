@@ -138,6 +138,14 @@ def callback(
         tokens = client.exchange_code(code, verifier)
         me = client.get_me(tokens.access_token)
         record_usage(db, settings, requests=1, posts=0, users=1)
+        if not settings.x_username_allowed(me.username):
+            # Private beta: hand the grant straight back rather than keep it.
+            for t in (tokens.refresh_token, tokens.access_token):
+                if t:
+                    client.revoke(t)
+            db.commit()
+            log.info("sign-in refused: not on allowlist")
+            return fail("not_invited")
     except XApiError as exc:
         log.warning("oauth exchange failed", extra={"code": exc.code, "status": exc.status})
         return fail("exchange_failed")

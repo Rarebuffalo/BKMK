@@ -156,6 +156,24 @@ def test_state_changing_requests_need_csrf(client):
     assert client.post("/api/scans", json={}, headers={"X-CSRF-Token": "nope"}).json()["code"] == "csrf_failed"
 
 
+def test_allowlist_refuses_other_x_accounts_without_storing_them(client, db, monkeypatch):
+    from app.config import get_settings
+
+    monkeypatch.setenv("ALLOWED_X_USERNAMES", "@someone_else")
+    get_settings.cache_clear()
+    _, state = _start(client)
+    r = client.get(
+        "/api/auth/x/callback", params={"state": state, "code": "fixture-code-normal"}, follow_redirects=False
+    )
+    assert r.status_code == 303 and "reason=not_invited" in r.headers["location"]
+    assert db.scalar(select(User)) is None and db.scalar(select(OAuthAccount)) is None
+    assert client.get("/api/auth/me").json()["authenticated"] is False
+
+    monkeypatch.setenv("ALLOWED_X_USERNAMES", "someone_else, BKMK_Fixture")
+    get_settings.cache_clear()
+    login(client)
+
+
 def test_state_changing_requests_from_a_foreign_origin_are_refused(client):
     csrf = login(client)
     evil = client.post("/api/auth/logout", headers={"X-CSRF-Token": csrf, "Origin": "https://evil.example"})

@@ -64,6 +64,8 @@ class Settings(BaseSettings):
     x_price_user_read: Decimal = Decimal("0.010")
     # Global cap on estimated X spend per UTC day, across all users. 0 disables live scans.
     x_daily_budget_usd: Decimal = Decimal("5.00")
+    # Optional private-beta allowlist of X usernames (comma-separated). Empty = anyone.
+    allowed_x_usernames: Annotated[list[str], NoDecode] = Field(default_factory=list)
 
     # ── Abuse protection ──
     auth_rate_limit_per_minute: int = 20
@@ -78,7 +80,7 @@ class Settings(BaseSettings):
                 return "postgresql+psycopg://" + v[len(prefix) :]
         return v
 
-    @field_validator("allowed_origins", mode="before")
+    @field_validator("allowed_origins", "allowed_x_usernames", mode="before")
     @classmethod
     def _split_origins(cls, v: object) -> object:
         if isinstance(v, str):
@@ -119,6 +121,10 @@ class Settings(BaseSettings):
         if self.cookie_secure is not None:
             return self.cookie_secure
         return self.environment == "production"
+
+    def x_username_allowed(self, username: str) -> bool:
+        allowed = {u.lstrip("@").lower() for u in self.allowed_x_usernames}
+        return not allowed or username.lower() in allowed
 
     @property
     def trusted_origins(self) -> set[str]:

@@ -85,5 +85,7 @@ def test_list_settings_accept_comma_separated_env_values(monkeypatch):
     from app.config import Settings
 
     monkeypatch.setenv("ALLOWED_ORIGINS", "https://a.example, https://b.example")
+    monkeypatch.setenv("ALLOWED_X_USERNAMES", "@Ada,grace")
     s = Settings()
     assert s.allowed_origins == ["https://a.example", "https://b.example"]
+    assert s.x_username_allowed("ada") and s.x_username_allowed("GRACE") and not s.x_username_allowed("eve")
