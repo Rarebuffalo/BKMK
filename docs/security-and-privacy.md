@@ -92,7 +92,8 @@ This describes what is implemented and tested in this repository. **No formal se
 
 - **Single-instance rate limiting.** It's in process; scaling to several instances needs a shared store.
 - **Background scans run in-process.** A restart marks running scans `failed` (`interrupted`), and the user can retry. There's no queue.
-- **Same encryption key for every token,** with no key-rotation tooling yet. Rotating means re-encrypting rows or asking users to reconnect.
+- **Same encryption key for every token,** with no re-encryption tooling. Rotating `TOKEN_ENCRYPTION_KEY` marks stored grants expired on next use, and users are asked to reconnect. Libraries are kept.
 - **No 24-hour deletion-request webhook from X** is handled, because no such mechanism is configured. Deletions happen on the next complete full scan or at disconnect.
+- **Retention:** accounts inactive for `DATA_RETENTION_DAYS` (default 90) are revoked and deleted. Sign out keeps data; Disconnect and Delete remove it. See [storage-and-sessions.md](storage-and-sessions.md).
 - **No privacy policy page yet.** X's policy requires one before launch.
 - **Live X integration is unverified.** No live X credentials were available, so the integration is tested only against fixtures that follow the documented response shapes.

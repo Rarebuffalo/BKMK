@@ -55,8 +55,9 @@ With authors off and the cap lowered to 200 (`SCAN_MAX_BOOKMARKS=200`), a typica
 
 | Item | Cheapest realistic option | Notes |
 |---|---|---|
-| App (API + SPA in one container) | Render Starter web service, or Fly.io shared-cpu-1x | A free instance sleeps; scans and OAuth callbacks need an awake server |
-| Postgres | Render Basic-256MB, or Neon/Supabase free tier | ~1–2 KB per bookmark, so 800 × 10k users ≈ 15 GB at full adoption |
+| Frontend | Vercel Hobby (free, non-commercial) | Static SPA plus the `/api` proxy |
+| API | Render free web service | Sleeps after 15 min idle and wakes in about a minute. An active scan polls, which keeps it awake. Upgrade to Starter if cold starts hurt. |
+| Postgres | Neon free (1 GB, 100 CU-h a month) | ~1–2 KB per bookmark, so 1 GB holds roughly 500k bookmarks. Paid tiers are needed long before 10k users. |
 | Redis or queue | Not needed | Scans finish in seconds in-process |
 | AI | None | $0 |
 
@@ -72,6 +73,7 @@ The product can't be free and unlimited:
 Recommended launch settings:
 
 1. **Spending limit in the X Developer Console.** This is the hard backstop.
+1. **`X_DAILY_BUDGET_USD`** (blueprint: $2). An in-app global cap per UTC day, in a ledger that account deletion can't reset. Scans refuse to start, or stop early and keep what they read.
 2. **`SCAN_MAX_BOOKMARKS=200` for free users,** stated in the UI. Raise it to 800 behind a paid tier or for invited testers.
 3. **`X_EXPAND_AUTHORS=false`** if the author filter can be lost. That cuts about 40% of cost.
 4. **Rely on refresh scans.** Automatic for returning users; small pages that stop at the first known post.

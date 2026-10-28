@@ -33,7 +33,7 @@ npm run dev                                     # http://localhost:5173
 
 With the default `X_API_MODE=fixture`, sign-in and scans use recorded X responses that follow the documented API shapes. You can click through the whole live flow, including cancelled, rate-limited and revoked cases, without credentials. Fixture mode is refused in production.
 
-To use **real X accounts**, set `X_API_MODE=live`, `X_CLIENT_ID` and `X_CLIENT_SECRET` in `backend/.env`, and register `http://localhost:5173/api/auth/x/callback` in your X app. See [docs/deployment.md](docs/deployment.md#x-developer-app-setup-owner-action).
+To use **real X accounts**, set `X_API_MODE=live`, `X_CLIENT_ID` and `X_CLIENT_SECRET` in `backend/.env`, and register `http://localhost:5173/api/auth/x/callback` in your X app. See [docs/deployment.md](docs/deployment.md#4-create-the-x-developer-app).
 
 ## Tests
 
@@ -74,7 +74,7 @@ docs/              plan, X API, scoring, security, cost, deployment, API referen
 - [Scoring, archetype and badge rules](docs/scoring-rules.md)
 - [Security and privacy](docs/security-and-privacy.md)
 - [Cost model](docs/cost-model.md)
-- [Deployment](docs/deployment.md)
+- [Deployment](docs/deployment.md): Vercel + Render + Neon, all on free tiers. Read the [readiness audit](docs/deployment-readiness.md) and the [storage and sessions design](docs/storage-and-sessions.md) first.
 - [API reference](docs/api-reference.md)
 - [UI research](docs/ui-research.md) · [Design system](docs/design-system.md)
 

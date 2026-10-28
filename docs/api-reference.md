@@ -22,7 +22,8 @@ The base path is `/api`. Bodies are JSON and keys are camelCase. Interactive Ope
 
 ## Health
 
-`GET /api/health` returns `200 {"status": "ok", "database": "ok", "xApiMode": "live", "xConfigured": true}`, or `503` with `"database": "unavailable"`.
+- `GET /api/health/live` returns `200 {"status": "ok"}`. It never touches the database. Use it for host health probes so Neon can scale to zero.
+- `GET /api/health` returns `200 {"status": "ok", "database": "ok", "xApiMode": "live", "xConfigured": true}`, or `503` with `"database": "unavailable"`.
 
 ## Authentication
 
@@ -30,17 +31,19 @@ The base path is `/api`. Bodies are JSON and keys are camelCase. Interactive Ope
 |---|---|
 | `GET /api/auth/x/start?handle=&returnTo=scan\|settings` | Starts OAuth 2.0 PKCE. Sets the state cookie and responds `303` to X's authorize URL. If X isn't configured, it redirects to `/connect?auth=failed&reason=not_configured`. |
 | `GET /api/auth/x/callback?state=&code=\|error=` | Validates the state (cookie plus single-use server record), exchanges the code, calls `/2/users/me`, upserts the user by stable X ID, stores encrypted tokens and creates the session. Redirects to `FRONTEND_URL` + `/scan?auth=success`, or `/connect?auth=success&requested=<typed handle>` on an account mismatch, or `/connect?auth=cancelled\|failed&reason=…`. |
-| `GET /api/auth/me` | `{authenticated, xConfigured, apiMode, user?, connection?, csrfToken?}`. Never includes tokens. |
-| `POST /api/auth/logout` | `204`. Ends this session. |
+| `GET /api/auth/me` | `{authenticated, xConfigured, apiMode, dataRetentionDays, user?, connection?, csrfToken?}`. Never includes tokens. |
+| `POST /api/auth/logout` | `204`. Ends this session and clears the cookie. The X grant and the stored library are kept for the next sign-in. |
 | `POST /api/auth/disconnect` | Revokes the tokens at X, then deletes all of the user's data. Returns `{"deleted": true, "revoked": bool}`. |
 
-Failure reasons for the callback: `state_mismatch`, `cancelled`, `exchange_failed`, `provider_error`, `invalid_handle`, `not_configured`.
+Failure reasons for the callback: `state_mismatch`, `cancelled`, `exchange_failed`, `provider_error`, `invalid_handle`, `not_configured`, and `not_invited` (the account isn't on `ALLOWED_X_USERNAMES`; the grant is revoked and nothing is stored).
+
+Every POST and DELETE needs the session's `X-CSRF-Token`. A request whose `Origin` header isn't `FRONTEND_URL` (or an `ALLOWED_ORIGINS` entry) gets `403 origin_rejected`.
 
 ## Scans
 
 | Method and path | Purpose |
 |---|---|
-| `POST /api/scans` body `{"mode"?: "full"\|"refresh"}` | Returns `202` with a `Scan`. Runs in the background. If a scan is already active, that scan is returned. `409 not_connected`, `429 scan_cooldown`. Without `mode`: `full` for the first scan, `refresh` after that. |
+| `POST /api/scans` body `{"mode"?: "full"\|"refresh"}` | Returns `202` with a `Scan`. Runs in the background. If a scan is already active, that scan is returned. `409 not_connected`, `429 scan_cooldown`, `429 daily_budget` (the global `X_DAILY_BUDGET_USD` is spent; `retryAfter` is the number of seconds until midnight UTC). A scan that reaches the cap mid-way ends `partial` with `stopReason: "daily_budget"`. Without `mode`: `full` for the first scan, `refresh` after that. |
 | `GET /api/scans/latest` | The most recent `Scan`, or `null` |
 | `GET /api/scans/{id}` | A `Scan` owned by the user. Poll it while the status is `queued` or `running`. |
 
