@@ -21,11 +21,11 @@ os.environ.update(
 )
 
 import pytest  # noqa: E402
+from alembic import command  # noqa: E402
 from alembic.config import Config  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 from sqlalchemy import text  # noqa: E402
 
-from alembic import command  # noqa: E402
 from app.config import get_settings  # noqa: E402
 from app.database import get_engine, get_sessionmaker  # noqa: E402
 from app.main import create_app  # noqa: E402
@@ -33,7 +33,9 @@ from app.ratelimit import limiter  # noqa: E402
 
 assert "test" in os.environ["DATABASE_URL"], "refusing to run tests against a non-test database"
 
-TABLES = "bookmark_tags, bookmarks, user_achievements, profile_stats, scans, sessions, oauth_accounts, oauth_states, users"
+TABLES = (
+    "bookmark_tags, bookmarks, user_achievements, profile_stats, scans, sessions, oauth_accounts, oauth_states, users"
+)
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -74,7 +76,9 @@ def login(client: TestClient, scenario: str = "normal", handle: str | None = "bk
     r = client.get("/api/auth/x/start", params=params, follow_redirects=False)
     assert r.status_code == 303, r.text
     state = re.search(r"state=([^&]+)", r.headers["location"]).group(1)
-    r = client.get("/api/auth/x/callback", params={"state": state, "code": f"fixture-code-{scenario}"}, follow_redirects=False)
+    r = client.get(
+        "/api/auth/x/callback", params={"state": state, "code": f"fixture-code-{scenario}"}, follow_redirects=False
+    )
     assert r.status_code == 303, r.text
     me = client.get("/api/auth/me").json()
     assert me["authenticated"], me

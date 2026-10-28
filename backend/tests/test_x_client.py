@@ -12,7 +12,9 @@ S = Settings(_env_file=None, x_client_id="cid", x_client_secret="csecret", x_max
 
 
 def client_with(handler, sleeps: list | None = None) -> XClient:
-    return XClient(S, transport=httpx.MockTransport(handler), sleep=(sleeps.append if sleeps is not None else lambda _s: None))
+    return XClient(
+        S, transport=httpx.MockTransport(handler), sleep=(sleeps.append if sleeps is not None else lambda _s: None)
+    )
 
 
 def test_parse_post_prefers_note_tweet_and_drops_x_links():
@@ -49,7 +51,9 @@ def test_pagination_through_fixture_collects_every_post_once():
     usage = UsageCounter()
     token, ids, cursor = "fixture-token-normal", [], None
     while True:
-        page = c.get_bookmarks_page(token, FIXTURE_USER["id"], max_results=100, pagination_token=cursor, expand_authors=True, usage=usage)
+        page = c.get_bookmarks_page(
+            token, FIXTURE_USER["id"], max_results=100, pagination_token=cursor, expand_authors=True, usage=usage
+        )
         ids += [p.id for p in page.posts]
         cursor = page.next_token
         if not cursor:
@@ -72,7 +76,9 @@ def test_token_exchange_sends_basic_auth_and_verifier():
     def handler(req: httpx.Request):
         seen["auth"] = req.headers["authorization"]
         seen["body"] = req.content.decode()
-        return httpx.Response(200, json={"access_token": "a", "refresh_token": "r", "expires_in": 7200, "scope": "bookmark.read"})
+        return httpx.Response(
+            200, json={"access_token": "a", "refresh_token": "r", "expires_in": 7200, "scope": "bookmark.read"}
+        )
 
     t = client_with(handler).exchange_code("the-code", "the-verifier")
     assert seen["auth"].startswith("Basic ") and "code_verifier=the-verifier" in seen["body"]
@@ -84,7 +90,11 @@ def test_retries_server_errors_with_backoff_then_succeeds():
 
     def handler(req):
         calls.append(1)
-        return httpx.Response(503) if len(calls) < 3 else httpx.Response(200, json={"data": {"id": "1", "username": "u", "name": "U"}})
+        return (
+            httpx.Response(503)
+            if len(calls) < 3
+            else httpx.Response(200, json={"data": {"id": "1", "username": "u", "name": "U"}})
+        )
 
     assert client_with(handler, sleeps).get_me("t").id == "1"
     assert len(calls) == 3 and len(sleeps) == 2 and all(s <= 8 for s in sleeps)

@@ -29,7 +29,9 @@ def test_token_cipher_rejects_wrong_context_and_tampering():
 
 
 def test_pkce_matches_rfc7636_appendix_b():
-    assert pkce_challenge("dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk") == "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM"
+    assert (
+        pkce_challenge("dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk") == "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM"
+    )
 
 
 def test_pkce_verifier_length_and_charset():
