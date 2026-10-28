@@ -3,9 +3,10 @@ import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { validateHandle } from '../../lib/handle'
 import { cx } from '../../lib/cx'
+import type { AppMode } from '../../state/session'
 import { Button } from '../ui/Button'
 
-export function UsernameForm({ id, onChange, autoFocus, compact }: { id: string; onChange?: (handle: string) => void; autoFocus?: boolean; compact?: boolean }) {
+export function UsernameForm({ id, onChange, autoFocus, compact, mode = 'demo' }: { id: string; onChange?: (handle: string) => void; autoFocus?: boolean; compact?: boolean; mode?: AppMode }) {
   const navigate = useNavigate()
   const [value, setValue] = useState('')
   const [touched, setTouched] = useState(false)
@@ -19,7 +20,7 @@ export function UsernameForm({ id, onChange, autoFocus, compact }: { id: string;
     setTouched(true)
     if (!v.ok) return
     setSubmitting(true)
-    navigate('/connect', { state: { handle: v.handle } })
+    navigate('/connect', { state: { handle: v.handle, mode } })
   }
 
   return (

@@ -12,12 +12,18 @@ import { ARCHETYPES } from '../domain/archetypes'
 import { TOPIC_BY_ID } from '../domain/topics'
 import type { ArchetypeId } from '../domain/types'
 import { cardDataFrom } from '../lib/shareCard'
+import { useLive } from '../state/live'
 import { useSession } from '../state/session'
 
 const NAMED: ArchetypeId[] = ['builder', 'researcher', 'explorer', 'curator', 'idea-hunter', 'rabbit-hole']
 
 export function LandingPage() {
-  const { state } = useSession()
+  const { state, dispatch } = useSession()
+  const live = useLive()
+  // Live sign-in only when a backend with X credentials (or test fixtures) is reachable.
+  const liveAvailable = live.status !== 'unavailable' && live.status !== 'checking' && !!live.me?.xConfigured
+  const formMode = liveAvailable ? 'live' : 'demo'
+  const hasArchive = live.report ? 'live' : state.result ? 'demo' : null
   const [typed, setTyped] = useState('')
   const sample = sampleResult()
   const cardData = useMemo(() => cardDataFrom(sample, typed || 'yourhandle'), [sample, typed])
@@ -32,10 +38,12 @@ export function LandingPage() {
         <nav className="flex items-center gap-1 font-mono text-xs text-paper-dim sm:gap-4">
           <a href="#how" className="hidden px-2 py-1 hover:text-paper sm:inline">How it works</a>
           <a href="#privacy" className="hidden px-2 py-1 hover:text-paper sm:inline">Privacy</a>
-          {state.result ? (
-            <ButtonLink to="/app" size="sm" variant="secondary">Open my archive</ButtonLink>
+          {hasArchive ? (
+            <ButtonLink to="/app" size="sm" variant="secondary" onClick={() => dispatch({ type: 'mode', mode: hasArchive })}>
+              Open my archive
+            </ButtonLink>
           ) : (
-            <span className="rounded-xs border border-line px-2 py-1 text-[10px] text-paper-faint">BUILD 001 · PROTOTYPE</span>
+            <span className="rounded-xs border border-line px-2 py-1 text-[10px] text-paper-faint">{liveAvailable ? 'BUILD 001' : 'BUILD 001 · DEMO'}</span>
           )}
         </nav>
       </header>
@@ -55,12 +63,12 @@ export function LandingPage() {
             Scan your X bookmarks. Find out what kind of collector you are, unlock badges, and finally search the things you saved.
           </p>
           <div className="mt-8 max-w-xl">
-            <UsernameForm id="hero-handle" onChange={setTyped} />
+            <UsernameForm id="hero-handle" onChange={setTyped} mode={formMode} />
           </div>
           <p className="mt-1 font-mono text-xs text-paper-faint">
-            Prototype build: scans run on sample data.{' '}
-            <Link to="/connect" state={{ handle: 'demo' }} className="text-paper-dim underline decoration-dotted underline-offset-4 hover:text-phosphor">
-              Try the demo profile →
+            {liveAvailable ? 'Want a look first? ' : live.status === 'checking' ? '' : 'Live X scanning isn’t enabled on this server — scans use sample data. '}
+            <Link to="/connect" state={{ handle: 'demo', mode: 'demo' }} className="text-paper-dim underline decoration-dotted underline-offset-4 hover:text-phosphor">
+              Try the demo profile (sample data) →
             </Link>
           </p>
         </div>
@@ -203,7 +211,7 @@ export function LandingPage() {
         <div className="eyebrow text-phosphor">READY WHEN YOU ARE</div>
         <h2 className="display mt-4 text-[clamp(2rem,5.5vw,3.6rem)]">Let’s see what you’ve been saving.</h2>
         <div className="mx-auto mt-10 max-w-xl text-left">
-          <UsernameForm id="footer-handle" compact />
+          <UsernameForm id="footer-handle" compact mode={formMode} />
         </div>
       </section>
 
