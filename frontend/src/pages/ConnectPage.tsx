@@ -1,23 +1,37 @@
 import { ArrowLeft, Ban, Check, KeyRound, RotateCcw, X as XIcon } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { api, startOAuthUrl } from '../api/endpoints'
 import { Avatar } from '../components/brand/Avatar'
-import { DemoLab, DemoTag } from '../components/brand/Demo'
+import { DemoLab, DemoTag, LiveTag } from '../components/brand/Demo'
 import { FlowLayout, Window } from '../components/scan/Window'
 import { Button, Spinner } from '../components/ui/Button'
 import { ErrorState } from '../components/ui/primitives'
 import { validateHandle } from '../lib/handle'
 import { cx } from '../lib/cx'
 import { authService, identityService, type AccountIdentity, type AuthOutcome } from '../services'
-import { useSession } from '../state/session'
+import { useLive } from '../state/live'
+import { useSession, type AppMode } from '../state/session'
 
 type Stage = 'lookup' | 'confirm' | 'authorize' | 'authorizing' | 'denied' | 'cancelled'
+type NavState = { handle?: string; reauth?: boolean; mode?: AppMode }
 
+/** Live sign-in when the server has X configured and the visitor chose it; otherwise the demo flow. */
 export function ConnectPage() {
+  const location = useLocation()
+  const [params] = useSearchParams()
+  const { state } = useSession()
+  const fromNav = (location.state as NavState | null) ?? {}
+  const returning = params.has('auth')
+  const mode: AppMode = returning ? 'live' : (fromNav.mode ?? state.mode)
+  return mode === 'live' ? <LiveConnect /> : <DemoConnect />
+}
+
+function DemoConnect() {
   const location = useLocation()
   const navigate = useNavigate()
   const { state, dispatch } = useSession()
-  const fromNav = (location.state as { handle?: string; reauth?: boolean } | null) ?? {}
+  const fromNav = (location.state as NavState | null) ?? {}
   const requested = fromNav.handle ?? state.identity?.handle
   const valid = requested ? validateHandle(requested) : { ok: null }
   const handle = valid.ok ? valid.handle : null
@@ -46,6 +60,7 @@ export function ConnectPage() {
     setStage('authorizing')
     const outcome = await authService.authorize(identity, state.demo.scenario, simulate)
     if (outcome === 'granted') {
+      dispatch({ type: 'mode', mode: 'demo' })
       dispatch({ type: 'identify', identity })
       dispatch({ type: 'authorize' })
       navigate('/scan', { replace: true })
@@ -154,6 +169,146 @@ export function ConnectPage() {
   )
 }
 
+const FAILURE_COPY: Record<string, string> = {
+  not_configured: 'Live X sign-in isn’t configured on this server yet. You can still try the demo.',
+  state_mismatch: 'The sign-in link expired or was opened in a different browser. Start again from this page.',
+  exchange_failed: 'X didn’t accept the sign-in. Try again in a moment.',
+  provider_error: 'X reported an error during sign-in. Nothing was saved.',
+  invalid_handle: 'That handle isn’t valid. Check it and try again.',
+}
+
+function LiveConnect() {
+  const location = useLocation()
+  const navigate = useNavigate()
+  const [params] = useSearchParams()
+  const { state, dispatch } = useSession()
+  const live = useLive()
+  const fromNav = (location.state as NavState | null) ?? {}
+  const auth = params.get('auth')
+  const reason = params.get('reason') ?? ''
+  const requested = params.get('requested')
+  const typed = fromNav.handle ?? state.identity?.handle ?? null
+  const valid = typed ? validateHandle(typed) : { ok: null }
+  const handle = valid.ok ? valid.handle : null
+  const initial = auth === 'cancelled' ? 'cancelled' : auth === 'failed' ? 'denied' : auth === 'success' && requested ? 'mismatch' : fromNav.reauth ? 'authorize' : 'confirm'
+  const [stage, setStage] = useState<'confirm' | 'authorize' | 'redirecting' | 'denied' | 'cancelled' | 'mismatch'>(initial)
+  const actual = live.me?.user?.handle
+
+  if (!handle && !auth && !fromNav.reauth) return <Navigate to="/" replace />
+
+  const connect = (h: string | null) => {
+    dispatch({ type: 'mode', mode: 'live' })
+    setStage('redirecting')
+    window.location.assign(startOAuthUrl(h))
+  }
+  const useDifferentAccount = async () => {
+    try {
+      await api.logout()
+    } catch {
+      // Session may already be gone; the local reset below is what matters.
+    }
+    live.clear()
+    setStage('authorize')
+  }
+
+  return (
+    <FlowLayout step={stage === 'confirm' ? 1 : 2}>
+      <div className="mx-auto w-full max-w-xl">
+        <Window title={stage === 'confirm' ? 'identify account' : 'authorize access'} status={<LiveTag />}>
+          <div className="p-5 sm:p-7">
+            {stage === 'confirm' && handle && (
+              <div className="animate-rise">
+                <h1 className="text-2xl font-bold">Scan @{handle}’s bookmarks?</h1>
+                <p className="mt-1 text-sm text-paper-dim">Bookmarks are private, so you’ll sign in to X as this account. X tells us who you are; your handle alone proves nothing.</p>
+                <AccountCard identity={{ handle, displayName: handle, isDemo: false }} />
+                <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
+                  <Button variant="ghost" icon={<ArrowLeft size={14} />} onClick={() => navigate('/')}>
+                    Change handle
+                  </Button>
+                  <Button variant="primary" icon={<Check size={14} />} onClick={() => setStage('authorize')}>
+                    That’s me
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {(stage === 'authorize' || stage === 'redirecting') && (
+              <div className="animate-rise">
+                <h1 className="text-2xl font-bold">{fromNav.reauth ? 'Reconnect to X' : 'Connect X and scan'}</h1>
+                <p className="mt-1 text-sm text-paper-dim">
+                  {fromNav.reauth ? 'Your authorization expired. Approve access again to continue.' : 'You’ll approve read-only access on X’s own page, then come straight back here.'}
+                </p>
+                <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                  <PermissionList title="BKMK.exe will be able to" tone="ok" items={['Read your bookmarks', 'Read your public profile', 'Stay connected until you disconnect']} />
+                  <PermissionList title="It will never" tone="no" items={['See your password', 'Post, like or follow', 'Read your DMs']} />
+                </div>
+                {live.me?.apiMode === 'fixture' && (
+                  <p className="mt-4 rounded-sm border border-dashed border-amber/40 p-3 font-mono text-xs text-amber">Test server: X is replaced by recorded fixture responses. No real account is used.</p>
+                )}
+                <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
+                  <Button variant="ghost" icon={<ArrowLeft size={14} />} onClick={() => (handle ? setStage('confirm') : navigate('/'))} disabled={stage === 'redirecting'}>
+                    Back
+                  </Button>
+                  <Button variant="primary" icon={<KeyRound size={14} />} loading={stage === 'redirecting'} onClick={() => connect(handle ?? actual ?? null)}>
+                    {stage === 'redirecting' ? 'Opening X…' : 'Connect X & scan'}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {stage === 'denied' && (
+              <ErrorState
+                code={`AUTH_${(reason || 'failed').toUpperCase()}`}
+                title={reason === 'not_configured' ? 'Live sign-in isn’t available' : 'Sign-in didn’t complete'}
+                body={FAILURE_COPY[reason] ?? 'The authorization didn’t complete. Nothing was saved.'}
+                action={
+                  <>
+                    {reason !== 'not_configured' && (
+                      <Button variant="primary" icon={<RotateCcw size={14} />} onClick={() => (handle ? setStage('authorize') : navigate('/'))}>
+                        Try again
+                      </Button>
+                    )}
+                    <Button onClick={() => navigate('/connect', { state: { handle: handle ?? 'demo', mode: 'demo' } })}>Try the demo</Button>
+                  </>
+                }
+              />
+            )}
+
+            {stage === 'cancelled' && (
+              <div className="animate-rise py-2">
+                <div className="eyebrow text-paper-faint">AUTHORIZATION CANCELLED</div>
+                <h1 className="mt-2 text-2xl font-bold">No problem — nothing was shared.</h1>
+                <p className="mt-2 text-sm text-paper-dim">You cancelled on X, so BKMK.exe has no access to your account. You can try again whenever you like.</p>
+                <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
+                  <Button variant="ghost" onClick={() => navigate('/')}>Back to start</Button>
+                  <Button variant="primary" icon={<KeyRound size={14} />} onClick={() => (handle ? setStage('authorize') : navigate('/'))}>Connect X</Button>
+                </div>
+              </div>
+            )}
+
+            {stage === 'mismatch' && (
+              <div className="animate-rise py-2">
+                <div className="eyebrow text-amber">ACCOUNT CHECK</div>
+                <h1 className="mt-2 text-2xl font-bold">You signed in as @{actual ?? '…'}</h1>
+                <p className="mt-2 text-sm text-paper-dim">
+                  You typed @{requested}. BKMK.exe can only read bookmarks for the account you sign in with, so the scan will use @{actual ?? 'that account'}.
+                </p>
+                <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
+                  <Button variant="ghost" onClick={useDifferentAccount}>Use a different account</Button>
+                  <Button variant="primary" icon={<Check size={14} />} onClick={() => navigate('/scan', { replace: true })} disabled={!actual}>
+                    Continue as @{actual ?? '…'}
+                  </Button>
+                </div>
+                <p className="mt-4 text-xs text-paper-faint">To switch accounts, sign out of X in this browser first, then connect again.</p>
+              </div>
+            )}
+          </div>
+        </Window>
+      </div>
+    </FlowLayout>
+  )
+}
+
 function AccountCard({ identity }: { identity: AccountIdentity }) {
   return (
     <div className="mt-5 flex items-center gap-4 rounded-sm border border-line bg-ink p-4">
@@ -161,7 +316,11 @@ function AccountCard({ identity }: { identity: AccountIdentity }) {
       <div className="min-w-0 flex-1">
         <div className="truncate font-semibold capitalize">{identity.displayName}</div>
         <div className="truncate font-mono text-sm text-paper-dim">@{identity.handle}</div>
-        {identity.isDemo && <div className="mt-1.5 text-xs text-amber">Demo identity — not looked up on X. Avatar is generated.</div>}
+        {identity.isDemo ? (
+          <div className="mt-1.5 text-xs text-amber">Demo identity — not looked up on X. Avatar is generated.</div>
+        ) : (
+          <div className="mt-1.5 text-xs text-paper-faint">Not looked up yet — X confirms the account when you sign in.</div>
+        )}
       </div>
     </div>
   )
