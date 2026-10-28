@@ -5,9 +5,10 @@ import { ACHIEVEMENTS } from '../../domain/achievements'
 import { ARCHETYPES } from '../../domain/archetypes'
 import { cx } from '../../lib/cx'
 import { relativeTime } from '../../lib/format'
-import { useSession } from '../../state/session'
+import { useAccountActions } from '../../state/actions'
+import { useResult } from '../../state/session'
 import { Avatar } from '../brand/Avatar'
-import { DemoBanner, DemoTag } from '../brand/Demo'
+import { DemoBanner, DemoTag, LiveTag } from '../brand/Demo'
 import { Wordmark } from '../brand/Pixel'
 import { Button } from '../ui/Button'
 import { ConfirmDialog, Modal } from '../ui/Modal'
@@ -20,18 +21,15 @@ const NAV = [
 ]
 
 export function AppShell() {
-  const { state, dispatch } = useSession()
   const navigate = useNavigate()
-  const result = state.result!
+  const result = useResult()!
+  const actions = useAccountActions()
   const [menuOpen, setMenuOpen] = useState(false)
   const [confirmDisconnect, setConfirmDisconnect] = useState(false)
   const earned = result.achievements.filter((a) => a.earned).length
 
-  const rescan = () => navigate(state.authorized ? '/scan' : '/connect', { state: { handle: result.handle, reauth: !state.authorized } })
-  const disconnect = () => {
-    dispatch({ type: 'disconnect' })
-    navigate('/', { replace: true })
-  }
+  const rescan = () => actions.rescan(result.handle)
+  const disconnect = () => actions.disconnect()
 
   return (
     <div className="min-h-dvh">
@@ -137,7 +135,7 @@ export function AppShell() {
 }
 
 function AccountBox() {
-  const result = useSession().state.result!
+  const result = useResult()!
   const a = ARCHETYPES[result.archetype.primary]
   return (
     <div className="mt-6 rounded-sm border border-line bg-ink-2 p-3">
@@ -153,7 +151,7 @@ function AccountBox() {
           <span className={cx('size-1.5', result.coverage === 'complete' ? 'bg-phosphor' : 'bg-amber')} />
           {result.isDemo ? 'Demo session' : 'Connected'}
         </span>
-        {result.isDemo && <DemoTag />}
+        {result.isDemo ? <DemoTag /> : <LiveTag />}
       </div>
     </div>
   )

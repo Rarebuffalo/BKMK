@@ -10,7 +10,7 @@ import { ARCHETYPES } from '../domain/archetypes'
 import { cx } from '../lib/cx'
 import { PRODUCT_URL } from '../lib/format'
 import { CARD_VARIANTS, cardDataFrom, exportPng, type CardVariant } from '../lib/shareCard'
-import { useSession } from '../state/session'
+import { useResult } from '../state/session'
 
 // X counts every URL as 23 characters regardless of length.
 const X_LIMIT = 280
@@ -20,7 +20,7 @@ export function SharePage() {
   const navigate = useNavigate()
   const toast = useToast()
   const [params, setParams] = useSearchParams()
-  const result = useSession().state.result!
+  const result = useResult()!
   const archetype = ARCHETYPES[result.archetype.primary]
   const variant = (CARD_VARIANTS.find((v) => v.id === params.get('variant'))?.id ?? 'terminal') as CardVariant
   const [showScore, setShowScore] = useState(true)

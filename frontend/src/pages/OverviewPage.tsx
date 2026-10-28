@@ -1,6 +1,6 @@
 import { ArrowRight, Dna, RefreshCw, Share2 } from 'lucide-react'
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { BadgeDetailModal } from '../components/achievements/BadgeDetailModal'
 import { ArchetypeEmblem, DnaStrip } from '../components/brand/Pixel'
 import { PageHeader } from '../components/dashboard/PageHeader'
@@ -10,15 +10,15 @@ import { Card, CardHeader } from '../components/ui/primitives'
 import { ARCHETYPES } from '../domain/archetypes'
 import { CONTENT_TYPES, TOPIC_BY_ID } from '../domain/topics'
 import { fmt, formatDate, pct } from '../lib/format'
-import { useSession } from '../state/session'
+import { useAccountActions } from '../state/actions'
+import { useResult } from '../state/session'
 
 // Monochrome ramp for content types so they don't compete with topic colours.
 const TYPE_SHADES = ['var(--paper)', 'var(--paper-dim)', 'var(--phosphor)', 'var(--phosphor-dim)', 'var(--signal)', 'var(--paper-faint)', 'var(--line-strong)']
 
 export function OverviewPage() {
-  const navigate = useNavigate()
-  const { state } = useSession()
-  const result = state.result!
+  const result = useResult()!
+  const actions = useAccountActions()
   const { stats } = result
   const a = ARCHETYPES[result.archetype.primary]
   const [badge, setBadge] = useState<string | null>(null)
@@ -32,7 +32,7 @@ export function OverviewPage() {
         title={<>@{result.handle}<span className="text-paper-faint">’s archive</span></>}
         action={
           <>
-            <Button size="sm" icon={<RefreshCw size={13} />} onClick={() => navigate(state.authorized ? '/scan' : '/connect', { state: { handle: result.handle, reauth: !state.authorized } })}>
+            <Button size="sm" icon={<RefreshCw size={13} />} onClick={() => actions.rescan(result.handle)}>
               Rescan
             </Button>
             <ButtonLink to="/share" size="sm" variant="primary" icon={<Share2 size={13} />}>

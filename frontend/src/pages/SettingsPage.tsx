@@ -1,42 +1,22 @@
 import { Download, LogOut, RefreshCw, Trash2 } from 'lucide-react'
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { Avatar } from '../components/brand/Avatar'
 import { DemoLabControls, DemoTag } from '../components/brand/Demo'
 import { PageHeader } from '../components/dashboard/PageHeader'
 import { Button } from '../components/ui/Button'
 import { ConfirmDialog } from '../components/ui/Modal'
 import { Card, CardHeader } from '../components/ui/primitives'
-import { useToast } from '../components/ui/Toast'
 import { relativeTime } from '../lib/format'
-import { useSession } from '../state/session'
+import { useAccountActions } from '../state/actions'
+import { useLive } from '../state/live'
+import { useResult } from '../state/session'
 
 export function SettingsPage() {
-  const navigate = useNavigate()
-  const toast = useToast()
-  const { state, dispatch } = useSession()
-  const result = state.result!
+  const live = useLive()
+  const result = useResult()!
+  const actions = useAccountActions()
+  const connection = live.me?.connection?.status
   const [confirm, setConfirm] = useState<'disconnect' | 'delete' | null>(null)
-
-  function exportJson() {
-    const payload = {
-      exportedAt: new Date().toISOString(),
-      handle: result.handle,
-      isDemo: result.isDemo,
-      scannedAt: result.scannedAt,
-      archetype: result.archetype,
-      score: result.score,
-      achievements: result.achievements,
-      bookmarks: result.bookmarks.map(({ id, author, text, createdAt, url, links, topic, contentType, accessible }) => ({ id, author, text, createdAt, url, links, topic, contentType, accessible })),
-    }
-    const url = URL.createObjectURL(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }))
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `bkmk-export-${result.handle}.json`
-    a.click()
-    setTimeout(() => URL.revokeObjectURL(url), 2000)
-    toast('Export downloaded')
-  }
 
   return (
     <>
@@ -52,7 +32,11 @@ export function SettingsPage() {
                   @{result.handle} {result.isDemo && <DemoTag />}
                 </div>
                 <div className="text-xs text-paper-faint">
-                  {result.isDemo ? 'Demo session · no X token is stored' : state.authorized ? 'Connected via X OAuth · read-only' : 'Authorization expired'}
+                  {result.isDemo
+                    ? 'Demo session · no X token is stored'
+                    : connection === 'active'
+                      ? 'Connected via X OAuth 2.0 · read-only scopes'
+                      : 'X authorization expired — reconnect to scan again'}
                 </div>
               </div>
             </div>
@@ -73,7 +57,7 @@ export function SettingsPage() {
                 {result.coverage === 'complete' ? 'Complete' : 'Partial'} · {result.stats.accessible} readable bookmarks. Rescans only add new posts — badges aren’t awarded twice.
               </div>
             </div>
-            <Button icon={<RefreshCw size={14} />} onClick={() => navigate(state.authorized ? '/scan' : '/connect', { state: { handle: result.handle, reauth: !state.authorized } })}>
+            <Button icon={<RefreshCw size={14} />} onClick={() => actions.rescan(result.handle)}>
               Rescan now
             </Button>
           </div>
@@ -82,7 +66,7 @@ export function SettingsPage() {
         <Card className="p-5">
           <CardHeader eyebrow="Your data" />
           <div className="mt-4 divide-y divide-line">
-            <Row title="Export" body="Download every scanned bookmark with its topic and type as JSON." action={<Button icon={<Download size={14} />} onClick={exportJson}>Export JSON</Button>} />
+            <Row title="Export" body="Download every scanned bookmark with its topic and type as JSON." action={<Button icon={<Download size={14} />} onClick={() => actions.exportData(result)}>Export JSON</Button>} />
             <Row
               title="Delete data"
               body={result.isDemo ? 'Erase the demo session and everything stored in this browser.' : 'Permanently delete your bookmarks, scores and badges from BKMK.exe.'}
@@ -116,8 +100,7 @@ export function SettingsPage() {
         open={confirm === 'disconnect'}
         onClose={() => setConfirm(null)}
         onConfirm={() => {
-          dispatch({ type: 'disconnect' })
-          navigate('/', { replace: true })
+          actions.disconnect()
         }}
         danger
         title="Disconnect your X account?"
@@ -128,8 +111,7 @@ export function SettingsPage() {
         open={confirm === 'delete'}
         onClose={() => setConfirm(null)}
         onConfirm={() => {
-          dispatch({ type: 'reset' })
-          navigate('/', { replace: true })
+          actions.deleteAll()
         }}
         danger
         title="Delete all data?"
