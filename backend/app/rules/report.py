@@ -12,7 +12,7 @@ from datetime import datetime
 
 from .topics import CONTENT_TYPES, TOPIC_BY_ID, TOPIC_IDS
 
-SCORE_VERSION = "score-v1"
+SCORE_VERSION = "score-v2"
 ARCHETYPE_VERSION = "archetype-v1"
 ACHIEVEMENTS_VERSION = "achievements-2026.10-v1"
 
@@ -95,9 +95,12 @@ def compute_stats(items: list[StatItem]) -> dict:
     }
 
 
-# ── Curation Score (score-v1) ───────────────────────────────────────────────
+# ── Curation Score (score-v2) ───────────────────────────────────────────────
 
 DEPTH_FULL_MARKS = 0.85
+# v2: diversity measured on a handful of bookmarks is noise, so the two
+# diversity dimensions ramp up linearly until the collection reaches this size.
+FULL_SAMPLE = 30
 SUBSTANTIAL_TYPES = ("thread", "article", "repo", "paper", "video", "tool")
 
 
@@ -117,18 +120,22 @@ def compute_score(stats: dict) -> dict:
     substantial = sum(stats["contentTypeCounts"][t] for t in SUBSTANTIAL_TYPES)
     depth_share = substantial / n if n else 0
     coverage = stats["classified"] / n if n else 0
+    sample = min(1.0, n / FULL_SAMPLE)
+    sample_note = (
+        f" Scaled by {round(sample * 100)}% until the collection has {FULL_SAMPLE} bookmarks." if sample < 1 else ""
+    )
     dims = [
         {
             "id": "exploration",
             "label": "Topic exploration",
-            "value": _clamp25(25 * _saturate(eff_topics - 1, 4)),
-            "explanation": f"Your saves spread across about {eff_topics:.1f} effective topics. Measured on proportions, so a larger collection does not score higher by size alone.",
+            "value": _clamp25(25 * _saturate(eff_topics - 1, 4) * sample),
+            "explanation": f"Your saves spread across about {eff_topics:.1f} effective topics. Measured on proportions, so a larger collection does not score higher by size alone.{sample_note}",
         },
         {
             "id": "diversity",
             "label": "Resource diversity",
-            "value": _clamp25(25 * _saturate(eff_types - 1, 2.2)),
-            "explanation": f"A mix of about {eff_types:.1f} effective resource types — posts, threads, articles, repos, papers, videos and tools.",
+            "value": _clamp25(25 * _saturate(eff_types - 1, 2.2) * sample),
+            "explanation": f"A mix of about {eff_types:.1f} effective resource types — posts, threads, articles, repos, papers, videos and tools.{sample_note}",
         },
         {
             "id": "depth",
