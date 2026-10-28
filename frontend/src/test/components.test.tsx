@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { UsernameForm } from '../components/landing/UsernameForm'
 import { AchievementsPage } from '../pages/AchievementsPage'
+import { LibraryPage } from '../pages/LibraryPage'
 import { SettingsPage } from '../pages/SettingsPage'
 import { SharePage } from '../pages/SharePage'
 import { renderRoutes, seedDemoSession } from './render'
@@ -90,5 +91,21 @@ describe('Settings', () => {
     await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: /delete everything/i }))
     await waitFor(() => expect(router.state.location.pathname).toBe('/'))
     expect(JSON.parse(localStorage.getItem('bkmk.session.v2')!).result).toBeNull()
+  })
+})
+
+describe('Library search', () => {
+  it('keeps every keystroke when typing quickly, then syncs the URL', async () => {
+    seedDemoSession()
+    const user = userEvent.setup({ delay: 5 })
+    const { router } = renderRoutes([{ path: '/app/library', element: <LibraryPage /> }], '/app/library')
+    const input = screen.getByLabelText('Search bookmarks')
+    await user.type(input, 'agent')
+    expect(input).toHaveValue('agent')
+    await waitFor(() => expect(router.state.location.search).toBe('?q=agent'))
+    expect(input).toHaveValue('agent')
+    await user.click(screen.getByRole('button', { name: /clear search/i }))
+    await waitFor(() => expect(router.state.location.search).toBe(''))
+    expect(input).toHaveValue('')
   })
 })

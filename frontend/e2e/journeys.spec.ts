@@ -60,8 +60,10 @@ test('4–7 dashboard → topics, library search, achievements', async ({ page }
   await expect(page.getByRole('heading', { name: 'Software Engineering' })).toBeVisible()
 
   await page.getByRole('link', { name: /all bookmarks/i }).click()
-  await page.getByLabel('Search bookmarks').fill('postgres')
+  // Typed key by key, like a person: earlier builds dropped characters here.
+  await page.getByLabel('Search bookmarks').pressSequentially('postgres', { delay: 30 })
   await expect(page).toHaveURL(/q=postgres/)
+  await expect(page.getByLabel('Search bookmarks')).toHaveValue('postgres')
   await expect(page.locator('mark').first()).toHaveText(/postgres/i)
   await page.getByLabel('Search bookmarks').fill('zzzz-no-match')
   await expect(page.getByText(/nothing matches/i)).toBeVisible()
