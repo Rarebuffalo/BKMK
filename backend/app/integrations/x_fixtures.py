@@ -102,7 +102,7 @@ def handler(request: httpx.Request) -> httpx.Response:
     if path == "/2/oauth2/token":
         form = parse_qs(request.content.decode())
         code = (form.get("code") or form.get("refresh_token") or [""])[0]
-        if not code.startswith("fixture-"):
+        if not code.startswith("fixture-") or code == "fixture-refresh-revoked":
             return _json(400, {"error": "invalid_grant"})
         scenario = code.removeprefix("fixture-code-").removeprefix("fixture-refresh-")
         return _json(
@@ -119,7 +119,8 @@ def handler(request: httpx.Request) -> httpx.Response:
         return _json(200, {"revoked": True})
 
     scenario = _scenario(request)
-    if scenario in {"invalid", "revoked"}:
+    if scenario == "invalid" or (scenario == "revoked" and path != "/2/users/me"):
+        # "revoked": login works, then the grant is withdrawn before the scan.
         return _json(401, {"title": "Unauthorized", "status": 401})
     user = OTHER_USER if scenario == "other" else FIXTURE_USER
     if path == "/2/users/me":
