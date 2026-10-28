@@ -14,7 +14,7 @@ from datetime import timedelta
 from decimal import Decimal
 
 from fastapi import HTTPException, status
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, or_, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -304,7 +304,10 @@ def run_scan(
             # Everything X still returns was seen; anything else was unbookmarked,
             # deleted or made private and must not be kept (X Developer Policy).
             removed = db.execute(
-                delete(Bookmark).where(Bookmark.user_id == user.id, Bookmark.last_seen_scan_id != scan.id)
+                delete(Bookmark).where(
+                    Bookmark.user_id == user.id,
+                    or_(Bookmark.last_seen_scan_id.is_(None), Bookmark.last_seen_scan_id != scan.id),
+                )
             )
             scan.removed_bookmarks = removed.rowcount or 0
         run.phase("stats", "calculating_stats")
