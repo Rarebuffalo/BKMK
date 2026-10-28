@@ -2,58 +2,84 @@
 
 > You saved it for a reason.
 
-BKMK.exe scans your X bookmarks. It gives you a collector archetype, a Curation Score and achievement badges, plus a searchable library of what you saved.
+BKMK.exe scans your X bookmarks through the official X API. It gives you a Bookmark DNA report (collector archetype, Curation Score and badges), a shareable scorecard, and a searchable, categorised library. Classification and scoring are rules-based, with no AI.
 
-**Status:** frontend prototype (build 001). It has no backend and no real X integration. Every scan runs on deterministic **synthetic sample data**, and the UI labels it that way throughout.
+There are two modes, and their data is never mixed:
 
-## Run the frontend
+- **Live:** sign in with X (OAuth 2.0 + PKCE). Scans read your real bookmarks and store them in Postgres.
+- **Demo:** fixed sample data that runs entirely in the browser. It's labelled "DEMO" everywhere and never touches the backend.
+
+## Quick start (local)
+
+Requirements: Node 20+, Python 3.12+, [uv](https://docs.astral.sh/uv/), PostgreSQL binaries (`initdb`, `pg_ctl`).
 
 ```bash
+# 1. Database — a project-local cluster in .local/pg on port 54329
+./scripts/dev-db.sh start
+
+# 2. Backend
+cd backend
+uv sync
+cp .env.example .env
+uv run python -m app.cli gen-secrets >> .env   # fills SESSION_SECRET / TOKEN_ENCRYPTION_KEY
+uv run alembic upgrade head
+uv run uvicorn app.main:app --port 8000 --reload
+
+# 3. Frontend (new terminal) — proxies /api to :8000
 cd frontend
 npm install
-npm run dev        # http://localhost:5173
+npm run dev                                     # http://localhost:5173
 ```
 
-Other scripts: `npm run build` (type-check + production build), `npm run lint` (oxlint), `npm run preview`.
+With the default `X_API_MODE=fixture`, sign-in and scans use recorded X responses that follow the documented API shapes. You can click through the whole live flow, including cancelled, rate-limited and revoked cases, without credentials. Fixture mode is refused in production.
 
-Optional: set `VITE_PUBLIC_URL` to the public site URL used in share captions and on the card. It defaults to the current origin.
+To use **real X accounts**, set `X_API_MODE=live`, `X_CLIENT_ID` and `X_CLIENT_SECRET` in `backend/.env`, and register `http://localhost:5173/api/auth/x/callback` in your X app. See [docs/deployment.md](docs/deployment.md#x-developer-app-setup-owner-action).
 
-### Try it
+## Tests
 
-1. Enter any valid handle, or use **Try the demo profile**.
-2. Confirm → Connect (simulated) → watch the scan → reveal.
-3. **Demo lab** opens from the bottom-left button, or from Settings in the dashboard. It previews:
-   - slow, partial, empty, API-error and auth-expired scans;
-   - each sample collection type, one per archetype.
-4. The same handle and collection always give the same archetype, score and badges.
+```bash
+cd backend && uv run pytest              # unit + integration against the bkmk_test database
+cd backend && uv run ruff check . && uv run alembic check
+cd frontend && npm run lint && npm run typecheck && npm test && npm run build
+cd frontend && npm run e2e               # Playwright: starts its own fixture backend + dev server
+```
+
+Playwright uses `/usr/bin/chromium` when present (or `PW_CHROMIUM_PATH`). Otherwise run `npx playwright install chromium` once. No test needs X credentials. The live API is never called by the test suite.
 
 ## Layout
 
 ```
-frontend/src/
-  domain/      pure rules: classifier, stats, scoring, archetypes, achievements, pixel art
-  data/        demo-only synthetic bookmarks (seeded, deterministic)
-  services/    service interfaces + demo implementations (the backend swap point)
-  state/       session store (React context + reducer, persisted to localStorage)
-  lib/         share-card canvas renderer, geometry, filters, formatting
-  components/  ui primitives, brand (pixel art, badges, DNA barcode), feature components
-  pages/       one per route
-docs/
-  ui-research.md    research, references and design decisions
-  design-system.md  tokens and component rules
+backend/
+  app/
+    api/           auth (OAuth PKCE, sessions), scans, data (dashboard, library, export, delete)
+    integrations/  X API client (retries, rate limits, shape checks) + fixture transport
+    rules/         classifier-v2, stats, Curation Score, archetypes, achievements
+    services/      scan pipeline, token store, library queries
+    models.py      SQLAlchemy models   config.py  validated settings   security.py  AES-GCM, PKCE
+  alembic/         migrations
+  tests/           pytest (Postgres)
+frontend/
+  src/api/         typed API client
+  src/state/       live session (server) and demo session (browser) stores
+  src/services/    demo scan (simulated) and live scan (polls the backend)
+  src/domain/      rules for demo mode (same constants as backend)
+  e2e/             Playwright journeys
+docs/              plan, X API, scoring, security, cost, deployment, API reference, UI research, design system
 ```
 
-## Backend integration points
+## Docs
 
-All of these sit behind interfaces in `frontend/src/services/types.ts`. They are wired in `services/index.ts`.
+- [Implementation plan and status](docs/implementation-plan.md)
+- [X API integration: what's verified and what isn't](docs/x-api-integration.md)
+- [Scoring, archetype and badge rules](docs/scoring-rules.md)
+- [Security and privacy](docs/security-and-privacy.md)
+- [Cost model](docs/cost-model.md)
+- [Deployment](docs/deployment.md)
+- [API reference](docs/api-reference.md)
+- [UI research](docs/ui-research.md) · [Design system](docs/design-system.md)
 
-| Interface | Production behaviour |
-|---|---|
-| `IdentityService.lookup(handle)` | Resolve the handle to a public profile (name, avatar) |
-| `AuthService.authorize()` | Redirect to the backend's X OAuth 2.0 (PKCE) start URL, then handle the callback |
-| `ScanService.start()` | Stream `ScanEvent`s (`phase`, `progress`, `topics`, `log`, `achievement`, `slow`, `error`, `done`) from the backend, e.g. over SSE |
-| Rules in `domain/` | Port to Python, or keep them shared. Classification, scoring and badges are pure functions with version strings. |
-| Settings actions | Disconnect means revoke the token and delete server data. Delete removes stored bookmarks. Export comes from the server. |
-| Share | Optional server-rendered Open Graph image (~1200×630) for link previews |
+## Known limits
 
-Known API constraint: X's bookmarks endpoint returns only the **800 most recent** bookmarks. It is rate-limited per user and needs OAuth 2.0 user context. Confirm current pricing and access before building the backend.
+- X returns at most your ~800 most recent bookmarks. Scans say so and never claim a full history.
+- The live X integration is tested against fixtures only, because no developer credentials were available while building it.
+- Every scan costs real X API credits (about $0.40–$7 per first scan). See the cost model before opening sign-ups.

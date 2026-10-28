@@ -91,3 +91,19 @@ See `security-and-privacy.md`. In summary:
 - `render.yaml` blueprint (web service plus Postgres) as the documented low-cost target.
 - Migrations run on start (`alembic upgrade head`).
 - Health check at `/api/health`.
+
+## 10. Status (end of implementation, 2026-10-28)
+
+| Area | State |
+|---|---|
+| Backend (FastAPI, SQLAlchemy 2, Alembic, Postgres) | Done. 2 migrations, `alembic check` clean |
+| X OAuth 2.0 PKCE, encrypted tokens, sessions, CSRF | Done. Tested against fixtures; **not verified against live X** (no credentials) |
+| Scan pipeline (pagination, upsert, classify, stats, score, archetype, badges, deletion sync) | Done. Idempotent, partial and failed handling tested |
+| Frontend wired to the API (live mode), demo mode preserved | Done |
+| Tests | Backend 107 pytest. Frontend 36 Vitest. 11 Playwright E2E |
+| Deployment | Docker image built and run in production mode locally. Compose stack smoke-tested. Render blueprint provided. **Not deployed publicly** (needs the owner's accounts) |
+
+Changes from the plan:
+
+- **score-v2.** Small-collection scaling, after testing showed inflated scores for tiny collections. See `scoring-rules.md`.
+- **Topic pages use stats.** Topic and overview pages read server-side aggregates (`stats.topicBreakdown`, `recent`) instead of the full bookmark list, so large live collections are never downloaded just to render.
