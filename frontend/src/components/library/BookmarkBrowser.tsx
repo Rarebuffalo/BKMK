@@ -228,7 +228,7 @@ export function BookmarkBrowser({ result, lockedTopic }: { result: ScanResult; l
       {error ? (
         <ErrorState code="LIBRARY" title="Couldn’t load your bookmarks" body={error} action={<Button onClick={() => setReload((r) => r + 1)}>Try again</Button>} />
       ) : !page ? (
-        <div className="grid gap-3 xl:grid-cols-2" aria-busy>
+        <div className="grid grid-cols-1 gap-3 xl:grid-cols-2" aria-busy>
           {Array.from({ length: 4 }, (_, i) => (
             <div key={i} className="panel h-36 animate-pulse bg-ink-2" />
           ))}
@@ -243,7 +243,7 @@ export function BookmarkBrowser({ result, lockedTopic }: { result: ScanResult; l
         </div>
       ) : (
         <>
-          <div className="grid gap-3 xl:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
             {items.map((b) => (
               <BookmarkCard key={b.id} bookmark={b} query={filters.q} isDemo={result.isDemo} onAuthor={(h) => update({ author: h })} />
             ))}

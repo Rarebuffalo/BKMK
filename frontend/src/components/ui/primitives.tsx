@@ -133,13 +133,17 @@ export function ErrorState({ title, body, action, code }: { title: string; body?
   )
 }
 
-export function Tooltip({ label, children }: { label: string; children: ReactNode }) {
+/** `align="end"` anchors to the right edge, for triggers near the edge of a narrow screen. */
+export function Tooltip({ label, children, align = 'center' }: { label: string; children: ReactNode; align?: 'center' | 'end' }) {
   return (
     <span className="group/tt relative inline-flex">
       {children}
       <span
         role="tooltip"
-        className="pointer-events-none absolute bottom-full left-1/2 z-40 mb-2 w-max max-w-56 -translate-x-1/2 rounded-xs border border-line-strong bg-ink-3 px-2 py-1 text-xs text-paper opacity-0 shadow-[var(--shadow-hard-sm)] transition-opacity group-focus-within/tt:opacity-100 group-hover/tt:opacity-100"
+        className={cx(
+          'pointer-events-none absolute bottom-full z-40 mb-2 w-max max-w-56 rounded-xs border border-line-strong bg-ink-3 px-2 py-1 text-xs text-paper opacity-0 shadow-[var(--shadow-hard-sm)] transition-opacity group-focus-within/tt:opacity-100 group-hover/tt:opacity-100',
+          align === 'center' ? 'left-1/2 -translate-x-1/2' : 'right-0',
+        )}
       >
         {label}
       </span>

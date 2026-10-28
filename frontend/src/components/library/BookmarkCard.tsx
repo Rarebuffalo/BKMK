@@ -46,7 +46,7 @@ export function BookmarkCard({ bookmark: b, query = '', isDemo, onAuthor }: { bo
   }
 
   return (
-    <article className="panel group relative p-4 transition-colors hover:border-line-strong">
+    <article className="panel group relative min-w-0 p-4 transition-colors hover:border-line-strong">
       <span className="absolute top-3 bottom-3 left-0 w-[2px]" style={{ background: topic.color }} aria-hidden />
       <header className="flex items-start gap-3">
         <Avatar handle={b.author.handle} size={32} />
@@ -103,7 +103,7 @@ export function BookmarkCard({ bookmark: b, query = '', isDemo, onAuthor }: { bo
             <Copy size={14} />
           </button>
           {isDemo ? (
-            <Tooltip label="Sample post — there’s no original on X to open.">
+            <Tooltip label="Sample post — there’s no original on X to open." align="end">
               <span className={cx('flex h-8 cursor-not-allowed items-center gap-1.5 rounded-sm px-2 font-mono text-xs text-paper-faint/60')} aria-disabled>
                 Open on X <ExternalLink size={12} />
               </span>
