@@ -1,102 +1,241 @@
 # Deployment
 
-**Status:** the configuration below has been built and checked locally:
+**Target:** Vercel (frontend, free Hobby plan), Render (API, free web service) and Neon (Postgres, free plan). [deployment-readiness.md](deployment-readiness.md) explains the choice and its limits; [storage-and-sessions.md](storage-and-sessions.md) explains data handling.
 
-- The Docker image builds.
-- It runs in `ENVIRONMENT=production` against Postgres.
-- Migrations apply on boot and `/api/health` returns ok.
-- The SPA is served with deep-link fallback.
-- Security headers are set and API docs are disabled.
-- OAuth start redirects to `x.com/i/oauth2/authorize` with PKCE S256.
-- Production refuses to start with missing secrets.
-- The full `docker compose` stack was smoke-tested with fixture X.
+**Status (2026-10-29): not deployed.**
 
-**Not done:** it has not been deployed to a public URL from here. That needs the owner's hosting account and X developer app (see "External actions" below).
+Verified locally:
+- The API image builds and starts with `ENVIRONMENT=production` against Postgres.
+- Migrations reach `0004`.
+- `/api/health/live` and `/api/health` respond, and API docs are off.
+- OAuth start redirects to X with PKCE S256, and the state cookie is `Secure` and `HttpOnly`.
+- HSTS is on, and no secrets appear in the logs.
+- All backend, unit and E2E tests pass.
 
-## Architecture in production
+Not verified until you deploy:
+- The Vercel rewrite and its cookie passthrough.
+- A live X sign-in and scan.
+- The Neon connection.
 
 ```
-Browser ──HTTPS──▶ one container: uvicorn (FastAPI)
-                        ├─ /api/*   JSON API, OAuth, scans (background thread)
-                        └─ /*       built SPA (frontend/dist), index.html fallback
-                     └──▶ managed PostgreSQL
-                     └──▶ api.x.com (OAuth + bookmarks)
+Browser ──▶ https://<app>.vercel.app
+              ├─ /*      SPA (frontend/dist)
+              └─ /api/*  rewrite ──▶ https://<api>.onrender.com/api/*  ──▶ Neon Postgres
+                                                                     └──▶ api.x.com
 ```
 
-Serving the frontend and API from one origin keeps cookies first-party (`SameSite=Lax`, `__Host-` prefix), needs no CORS, and leaves one URL to register with X.
+## Deployment checklist
 
-## Required environment variables
+Do the steps in order; each one needs something from the step before.
 
-| Variable | Example | Notes |
+**Stage 1** (steps 1–3) publishes the site in **demo mode**, with no X app needed.
+
+**Stage 2** (steps 4–10) turns on live X scanning.
+
+### 1. Create the accounts (all free; no card needed except at X)
+
+| Service | Plan to choose | Used for |
 |---|---|---|
-| `ENVIRONMENT` | `production` | Enables the strict checks: https URLs, secrets present, fixture mode refused, Secure cookies, HSTS |
-| `DATABASE_URL` | `postgres://…` | `postgres://` is converted to `postgresql+psycopg://` automatically |
-| `FRONTEND_URL` | `https://bkmk.example` | Where OAuth sends users back. Same origin as the app. |
-| `BACKEND_URL` | `https://bkmk.example` | Same origin |
-| `X_REDIRECT_URI` | `https://bkmk.example/api/auth/x/callback` | Must exactly match the callback registered in the X app |
-| `X_CLIENT_ID`, `X_CLIENT_SECRET` | from the X Developer Console | Web App (confidential client), OAuth 2.0 |
-| `SESSION_SECRET` | 48+ random chars | `uv run python -m app.cli gen-secrets` |
-| `TOKEN_ENCRYPTION_KEY` | 32-byte url-safe base64 | Same command. **Back it up:** losing it means every user must reconnect. |
-| `PORT` | `8000` | Set by most hosts |
+| GitHub | Free | Hosts the repository that Vercel and Render deploy from. Push `main` first. |
+| Vercel | **Hobby** | Frontend. Non-commercial use only; move to Pro if BKMK.exe earns money. |
+| Neon | **Free** | Postgres |
+| Render | **Free** instance type (the "Hobby" workspace plan) | API |
+| X Developer Console | Pay-per-use with **pre-paid credits** | OAuth and bookmark reads. **This is the only paid part.** |
 
-Optional variables: `SCAN_MAX_BOOKMARKS` (default 800), `SCAN_COOLDOWN_SECONDS` (300), `X_EXPAND_AUTHORS` (true), `SESSION_TTL_HOURS` (24), `AUTH_RATE_LIMIT_PER_MINUTE` (20), `ALLOWED_ORIGINS` (only for a split-origin setup), and `X_PRICE_*` for cost estimates. The frontend build arg `VITE_PUBLIC_URL` sets the link shown on share cards.
+### 2. Deploy the frontend on Vercel (demo mode)
 
-Never commit `.env` files. `.gitignore` and `.dockerignore` exclude them.
+1. In Vercel, choose **Add New → Project** and import the GitHub repository.
+2. Configure the project:
 
-## X developer app setup (owner action)
+   | Setting | Value |
+   |---|---|
+   | Root Directory | **`frontend`** |
+   | Framework Preset | Vite (also set by `frontend/vercel.json`) |
+   | Install / Build command | `npm ci` / `npm run build` |
+   | Output directory | `dist` |
+   | Node.js version | 22.x (Project → Settings → Build) |
 
-1. Create a Project and an App at the X Developer Console.
-2. Under **User authentication settings**, enable **OAuth 2.0** with:
-   - Type of App: **Web App, Automated App or Bot** (confidential client).
-   - Callback URI: `https://<your-host>/api/auth/x/callback` (also add `http://localhost:5173/api/auth/x/callback` for local live testing).
-   - Website URL: your public URL.
-3. Copy the OAuth 2.0 **Client ID** and **Client Secret** into `X_CLIENT_ID` and `X_CLIENT_SECRET`.
-4. Buy credits (pay-per-use) and **set a spending limit**. See `cost-model.md`.
-5. Check that the app's access level allows `GET /2/users/{id}/bookmarks`. This couldn't be verified without credentials.
+3. Optionally, add the environment variable `VITE_PUBLIC_URL`, set to `https://<app>.vercel.app`. It's public: it appears in share captions. Leave `VITE_API_BASE` **unset**.
+4. Deploy, and note the production URL `https://<app>.vercel.app`. A custom domain works the same way: use it wherever this guide says `<app>.vercel.app`.
 
-## Option A: Render (blueprint included)
+### 3. Check demo mode
 
-1. Push the repository to GitHub.
-2. In Render, choose **New → Blueprint** and select the repo. `render.yaml` creates the Docker web service and a Postgres database.
-3. Fill in the `sync: false` variables in the dashboard: the URLs (your `https://<name>.onrender.com`), the X credentials and `TOKEN_ENCRYPTION_KEY`. `SESSION_SECRET` is generated automatically.
-4. Deploy. The container runs `alembic upgrade head`, then starts uvicorn behind Render's TLS. `/api/health` is the health check.
-5. Add the final callback URL to the X app, then sign in to verify the live flow.
+1. Open `https://<app>.vercel.app/app/library` directly. Deep links must load, not 404.
+2. The landing page should say live scanning isn't enabled. `/api/*` isn't wired yet, so it returns 404.
+3. Run the demo scan end to end.
 
-The cheapest working configuration is the Starter web service plus Basic Postgres. Free instances sleep, which breaks OAuth callbacks and in-progress scans.
+You can stop here and have a working public demo.
 
-## Option B: any Docker host (Fly.io, Railway, a VM)
+### 4. Create the X developer app
+
+1. In the X Developer Console, create a Project and an App.
+2. Under **User authentication settings**, enable **OAuth 2.0**:
+   - **Type of App:** Web App, Automated App or Bot (a confidential client).
+   - **Callback URI:** `https://<app>.vercel.app/api/auth/x/callback`. It must match character for character, with no trailing slash. For local live testing, also add `http://localhost:5173/api/auth/x/callback`.
+   - **Website URL:** `https://<app>.vercel.app`.
+   - **Permissions:** read only. The app requests `tweet.read users.read bookmark.read offline.access`.
+3. Copy the **OAuth 2.0 Client ID and Client Secret** into a password manager. Never paste them into chat, an issue or a commit.
+4. Under **Billing**, buy a small amount of credit and **set a spending limit**. Reads cost about $0.005 per post and $0.010 per user ([cost-model.md](cost-model.md)).
+
+### 5. Create the Neon database
+
+1. In Neon, choose **New Project**: Postgres 17, in the region closest to your Render region (for example AWS US East (Ohio) with Render Ohio).
+2. Open **Connection details**:
+   - Turn **Connection pooling OFF**. You want the *direct* host, without `-pooler`.
+   - Copy the connection string. It looks like `postgresql://<user>:<password>@ep-<id>.<region>.aws.neon.tech/neondb?sslmode=require&channel_binding=require`.
+3. Keep it for step 7. It's a secret.
+
+### 6. Generate the app secrets on your machine
 
 ```bash
-docker build -t bkmk --build-arg VITE_PUBLIC_URL=https://bkmk.example .
-docker run -p 8000:8000 --env-file prod.env bkmk
+cd backend && uv run python -m app.cli gen-secrets
 ```
 
-Put TLS in front: the platform proxy, Caddy or nginx. uvicorn runs with `--proxy-headers` so client IPs reach the rate limiter.
+This prints a `SESSION_SECRET` and a `TOKEN_ENCRYPTION_KEY` in your own terminal.
 
-## Local production-like check
+- You only need `TOKEN_ENCRYPTION_KEY`; Render generates `SESSION_SECRET`.
+- Store `TOKEN_ENCRYPTION_KEY` in your password manager. **If you lose it, every user has to reconnect.**
+
+### 7. Deploy the API on Render
+
+1. In Render, choose **New → Blueprint**, connect the repository and select `render.yaml`. It creates the free Docker web service `bkmk-api` from `backend/`.
+2. Render asks for the `sync: false` values. Use the table below. Leave `ALLOWED_X_USERNAMES` empty for open sign-up, or list your own handle for a private beta.
+3. Deploy. The container runs `alembic upgrade head`, then uvicorn. Watch the logs for `"msg": "bkmk started"`.
+
+   If it exits with `Missing required production settings` or `must use https`, fix the variable it names.
+4. Note the service URL `https://bkmk-api-<suffix>.onrender.com`. Check that `https://<that>/api/health` returns `"database":"ok"`.
+
+### 8. Point Vercel's `/api` at Render
+
+Edit `frontend/vercel.json` and put the API rewrite **first** in `rewrites`, using your exact Render URL:
+
+```json
+"rewrites": [
+  { "source": "/api/:path*", "destination": "https://bkmk-api-<suffix>.onrender.com/api/:path*" },
+  { "source": "/((?!api/).*)", "destination": "/index.html" }
+]
+```
+
+Commit and push; Vercel redeploys.
+
+This is a file edit rather than a setting because Vercel rewrites can't read environment variables. Use the URL Render gave *you*: pointing at someone else's service would send them your users' cookies.
+
+### 9. Migrations
+
+Migrations already ran in step 7, because they run on every API boot.
+
+To run them by hand (for example, before a risky deploy):
 
 ```bash
-cd backend && uv run python -m app.cli gen-secrets   # export SESSION_SECRET / TOKEN_ENCRYPTION_KEY
-cd .. && docker compose up --build                   # http://localhost:8080, fixture X by default
+cd backend && DATABASE_URL='<neon direct url>' uv run alembic upgrade head
 ```
 
-## Database migrations
+Rules:
+- Run this from your own terminal; never paste the URL anywhere else.
+- Never run `alembic downgrade` or `DROP` against production.
+- Take a `pg_dump` first ([storage-and-sessions.md](storage-and-sessions.md#neon-specifics)).
 
-- **Apply:** `cd backend && uv run alembic upgrade head`. The container does this on every boot; it's idempotent.
-- **Create a new migration:** `uv run alembic revision --autogenerate -m "describe change"`. Review it, then commit it.
-- **Check for drift:** `uv run alembic check`.
-- `create_all()` is never used.
+### 10. Test the deployed app end to end
+
+| # | Check | Expected |
+|---|---|---|
+| a | `curl https://<app>.vercel.app/api/health/live` | `{"status":"ok"}`, which proves the rewrite works |
+| b | `curl https://<app>.vercel.app/api/health` | `"database":"ok"`, `"xConfigured":true` |
+| c | Open the site | Live sign-in is offered; demo still works |
+| d | Sign in with X and approve | Back on `/scan`; the scan runs and the reveal shows real numbers |
+| e | DevTools → Application → Cookies on `<app>.vercel.app` | `__Host-bkmk_session` with HttpOnly ✓, Secure ✓, SameSite Lax. **Proves Vercel passes `Set-Cookie` through.** |
+| f | DevTools → Application → Local storage | Only `bkmk.session.v2`, with no bookmark text from your real library |
+| g | Settings → Sign out, then sign in again | Library, score and badges are still there |
+| h | Reload `/app/library` | It loads |
+| i | `curl https://bkmk-api-<suffix>.onrender.com/api/dashboard` | `401`, so nothing is readable without a session |
+| j | X Developer Console → Usage vs Render logs (`"scan finished" … cost_usd`) | Roughly equal |
+| k | Render logs | No tokens, codes, cookies or post text |
+| l | Settings → Disconnect | Back to the landing page; on X, Settings → Connected apps no longer lists BKMK.exe |
+
+If **(e)** fails because there's no cookie after sign-in, stop and tell me. The fallback is a split-origin setup (`SameSite=None` plus CORS), which needs code changes.
+
+### 11. Rollback and credential rotation
+
+**Rolling back a bad deploy**
+
+- **Frontend:** Vercel → Project → Deployments → pick the last good deployment → **Promote to Production**. This is instant.
+- **API:** Render → `bkmk-api` → Deploys → the last good deploy → **Rollback**. All migrations so far are additive (new table, new column), so older code runs fine on the newer schema.
+- **Data:** Neon → Branches → **Restore**, to any point in the last 6 hours (free plan).
+
+**Rotating credentials**
+
+| Credential | How | Effect |
+|---|---|---|
+| `X_CLIENT_SECRET` | X Console → App → Keys and tokens → regenerate. Paste into Render and save, which redeploys. | Existing user grants keep working. |
+| `SESSION_SECRET` | Render → Environment → Generate. Save. | Everyone is signed out; no data is lost. |
+| `TOKEN_ENCRYPTION_KEY` | Run `gen-secrets` again, paste into Render, save. | Users are asked to reconnect on their next scan; stored libraries stay. |
+| Neon password | Neon → Roles → Reset password. Update `DATABASE_URL` on Render. | Brief API restart |
+| Leaked anything | Rotate first. Then remove it from the code. If it was committed, also rewrite history (`git filter-repo`) and force-push, because deleting the line isn't enough. | |
+
+## Environment variables
+
+**Changes take effect when:**
+- **Render:** saving a variable redeploys the service automatically.
+- **Vercel:** `VITE_*` values are baked into the bundle at build time, so they need a new deployment.
+
+### Backend (Render)
+
+| Variable | Purpose | Secret? | Required | How to get it | Takes effect |
+|---|---|---|---|---|---|
+| `ENVIRONMENT` | `production` turns on strict checks, Secure cookies and HSTS | Public | Yes | Set by the blueprint | On redeploy |
+| `DATABASE_URL` | Neon connection | **Secret** | Yes | Neon → Connection details, direct, `sslmode=require` | On redeploy |
+| `FRONTEND_URL` | Browser origin: OAuth return target and allowed `Origin` | Public | Yes | `https://<app>.vercel.app` | On redeploy |
+| `X_REDIRECT_URI` | OAuth callback, exactly as registered at X | Public | Yes | `https://<app>.vercel.app/api/auth/x/callback` | On redeploy |
+| `X_CLIENT_ID` | X OAuth 2.0 client ID | Secret-ish (public in auth URLs, but keep it out of git) | Yes | X Console | On redeploy |
+| `X_CLIENT_SECRET` | X OAuth 2.0 client secret | **Secret** | Yes | X Console | On redeploy |
+| `SESSION_SECRET` | HMAC key for session IDs (≥32 characters) | **Secret** | Yes | Generated by Render, or `gen-secrets` | On redeploy (signs everyone out) |
+| `TOKEN_ENCRYPTION_KEY` | AES-256-GCM key for stored X tokens | **Secret** | Yes | `gen-secrets`; back it up | On redeploy (users reconnect) |
+| `X_DAILY_BUDGET_USD` | Global daily cap on estimated X spend; `0` stops live scans | Public | No (5.00; blueprint 2.00) | Your choice | On redeploy |
+| `SCAN_MAX_BOOKMARKS` | Posts per scan (the cost per scan) | Public | No (800; blueprint 200) | Your choice | On redeploy |
+| `SCAN_COOLDOWN_SECONDS` | Minimum gap between a user's scans | Public | No (300; blueprint 3600) | Your choice | On redeploy |
+| `ALLOWED_X_USERNAMES` | Private-beta allowlist, comma-separated; empty means anyone | Public | No | Your choice | On redeploy |
+| `DATA_RETENTION_DAYS` | Delete accounts inactive this long; `0` means keep | Public | No (90) | Your choice | On redeploy |
+| `SESSION_TTL_HOURS` | Session lifetime | Public | No (24) | | On redeploy |
+| `AUTH_RATE_LIMIT_PER_MINUTE` | Per-IP limit on the OAuth endpoints | Public | No (20) | | On redeploy |
+| `X_EXPAND_AUTHORS` | Fetch author profiles with each page (+$0.010 per new author) | Public | No (true) | | On redeploy |
+| `X_PRICE_POST_READ`, `X_PRICE_USER_READ` | Prices used for estimates and the cap | Public | No (0.005 / 0.010) | X pricing page | On redeploy |
+| `ALLOWED_ORIGINS` | Only for a split-origin setup; **leave empty** here | Public | No | | On redeploy |
+| `PORT` | Listen port | Public | Set by Render | | |
+
+`X_API_MODE` must stay unset or `live`: `fixture` is refused in production.
+
+### Frontend (Vercel)
+
+| Variable | Purpose | Secret? | Required | Takes effect |
+|---|---|---|---|---|
+| `VITE_PUBLIC_URL` | Link in share captions and cards (defaults to the current origin) | Public: it's in the bundle | No | On a new Vercel deployment |
+| `VITE_API_BASE` | API origin for split-origin setups. **Leave unset**: the rewrite makes it same-origin. | Public | No | On a new Vercel deployment |
+
+Never put a secret in a `VITE_*` variable; everything prefixed `VITE_` ships to every visitor.
+
+## Alternatives
+
+- **One origin on a single host.** The root `Dockerfile` builds the SPA into the API image, so one Render service serves both. It's simpler but the landing page cold-starts too. Use `FRONTEND_URL` = `X_REDIRECT_URI` origin = the Render URL. `docker compose up --build` runs it locally at `http://localhost:8080`.
+- **Koyeb free** instead of Render: the same image from `backend/`, health check `/api/health/live`, and the same variables. It scales to zero after 1 h instead of 15 min.
 
 ## Operations
 
-- **Logs.** JSON lines on stdout with `scan_id`, `user_id`, status and cost estimates. Never tokens or post text.
-- **Health.** `GET /api/health` returns 503 if the database is unreachable.
-- **Restarts.** In-flight scans are marked `failed (interrupted)` on boot, and users can retry.
-- **Scaling.** One instance handles this product's scale. Before running several instances, move the in-process rate limiter to a shared store. Scans would still work, since their state is in Postgres.
+- **Cold starts.** Render free sleeps after 15 minutes idle; the first API call then takes up to about a minute. Vercel's proxy waits 120 s, so the call completes. An active scan polls every 0.7 s, which keeps the service awake.
+- **Health.** Render probes `/api/health/live`, which never queries the database. Use `/api/health` for a manual deep check: it returns 503 if Neon is unreachable.
+- **Restarts.** On boot the API marks interrupted scans failed and runs housekeeping (expired sessions and the retention policy), then repeats that every 6 h.
+- **Logs.** JSON on stdout, viewed in the Render dashboard, with credentials redacted. Search for `"scan finished"` for per-scan cost.
+- **Scaling beyond one instance.** Move the rate limiter to a shared store first. Scans and sessions already live in Postgres.
 
-## External actions still needed
+## Changes made for this deployment (2026-10-29)
 
-1. Create the X developer app, configure OAuth 2.0 and buy credits (see above).
-2. Create the hosting account and database, and deploy (Option A or B).
-3. Run one real sign-in and scan, then compare the X Developer Console usage with `estimated_cost_usd`.
-4. Publish a privacy policy page before inviting users (X policy requirement).
+| Area | Change | Files |
+|---|---|---|
+| Health | `/api/health/live` for host probes, so Neon can scale to zero | `backend/app/main.py`, both Dockerfiles, `render.yaml` |
+| Cost | Global daily spend cap in a ledger that survives account deletion; refuses or stops scans early | `backend/app/services/budget.py`, `scan_service.py`, migration `0003` |
+| Access | `ALLOWED_X_USERNAMES` private-beta allowlist; refused grants are revoked | `backend/app/api/auth.py` |
+| Sessions | Sign out (keeps data), separate from Disconnect and Delete; `Origin` check on POST and DELETE | `sessions.py`, `SettingsPage.tsx`, `actions.ts` |
+| Retention | Inactive accounts deleted after `DATA_RETENTION_DAYS`; `last_seen_at` | `services/retention.py`, migration `0004`, `main.py` |
+| Robustness | A rotated `TOKEN_ENCRYPTION_KEY` leads to a reconnect prompt instead of a crash; comma-separated list variables now parse | `services/tokens.py`, `config.py` |
+| Database | Pool sized for one process on Neon | `database.py` |
+| Hosting | API-only image, free Render blueprint, Vercel config | `backend/Dockerfile`, `render.yaml`, `frontend/vercel.json` |
+| Config | `BACKEND_URL` removed (unused); new variables in `.env.example`; `.gitignore` hardened | |
