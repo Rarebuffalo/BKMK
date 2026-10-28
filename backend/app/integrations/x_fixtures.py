@@ -2,7 +2,7 @@
 
 Responses follow the documented v2 shapes. The scenario is carried in the
 fixture token (``fixture-token-<scenario>``) so one process can serve
-several behaviours: normal | empty | ratelimit | revoked | servererror.
+several behaviours: normal | empty | ratelimit | revoked | servererror | other.
 All posts are synthetic and authored by fictional accounts.
 """
 
@@ -14,6 +14,8 @@ from urllib.parse import parse_qs
 import httpx
 
 FIXTURE_USER = {"id": "1000000000000000001", "username": "bkmk_fixture", "name": "BKMK Fixture"}
+# A second account, used to test that users never see each other's data.
+OTHER_USER = {"id": "1000000000000000002", "username": "bkmk_other", "name": "Other Fixture"}
 FIXTURE_TOTAL = 230
 
 _AUTHORS = [
@@ -119,9 +121,13 @@ def handler(request: httpx.Request) -> httpx.Response:
     scenario = _scenario(request)
     if scenario in {"invalid", "revoked"}:
         return _json(401, {"title": "Unauthorized", "status": 401})
+    user = OTHER_USER if scenario == "other" else FIXTURE_USER
     if path == "/2/users/me":
-        return _json(200, {"data": FIXTURE_USER})
-    if path == f"/2/users/{FIXTURE_USER['id']}/bookmarks":
+        return _json(200, {"data": user})
+    if path.startswith("/2/users/") and path.endswith("/bookmarks"):
+        if path != f"/2/users/{user['id']}/bookmarks":
+            # X only serves the authenticated user's own bookmarks.
+            return _json(403, {"title": "Forbidden", "status": 403})
         if scenario == "servererror":
             return _json(503, {"title": "Service Unavailable", "status": 503})
         posts = [] if scenario == "empty" else fixture_posts()
