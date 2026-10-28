@@ -15,6 +15,14 @@ export function DemoTag({ className }: { className?: string }) {
   )
 }
 
+export function LiveTag({ className }: { className?: string }) {
+  return (
+    <span className={cx('inline-flex items-center gap-1 rounded-xs border border-phosphor/50 px-1.5 py-px font-pixel text-[10px] text-phosphor', className)} title="Your real X bookmarks">
+      LIVE
+    </span>
+  )
+}
+
 export function DemoBanner() {
   return (
     <div className="border-b border-amber/25 bg-amber/[0.07] px-4 py-1.5 text-center font-mono text-[11px] text-amber">

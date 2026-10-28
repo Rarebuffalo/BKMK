@@ -1,18 +1,20 @@
 import { ArrowRight, Clock, KeyRound, RotateCcw, Square } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Navigate, useNavigate } from 'react-router-dom'
-import { DemoLab, DemoTag } from '../components/brand/Demo'
+import { Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { DemoLab, DemoTag, LiveTag } from '../components/brand/Demo'
 import { AchievementBadge, RARITY_COLOR } from '../components/brand/Pixel'
 import { FlowLayout, Window } from '../components/scan/Window'
-import { Button } from '../components/ui/Button'
+import { Button, Spinner } from '../components/ui/Button'
 import { BlockProgress, EmptyState, ErrorState } from '../components/ui/primitives'
 import { ACHIEVEMENT_BY_ID } from '../domain/achievements'
 import { TOPIC_BY_ID } from '../domain/topics'
 import type { ScanResult, TopicId } from '../domain/types'
 import { cx } from '../lib/cx'
 import { fmt } from '../lib/format'
-import { scanService, type ScanErrorCode, type ScanPhase } from '../services'
-import { useSession } from '../state/session'
+import { startOAuthUrl } from '../api/endpoints'
+import { scanServices, type ScanErrorCode, type ScanPhase } from '../services'
+import { useLive } from '../state/live'
+import { useSession, type AppMode } from '../state/session'
 
 const PHASES: { id: ScanPhase; label: string }[] = [
   { id: 'connect', label: 'Connecting to account' },
@@ -44,7 +46,13 @@ const blank: ScanView = { phase: 'connect', retrieved: 0, page: 0, logs: [], top
 
 export function ScanPage() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const [params] = useSearchParams()
   const { state, dispatch } = useSession()
+  const live = useLive()
+  const fromOAuth = params.get('auth') === 'success'
+  const mode: AppMode = fromOAuth ? 'live' : state.mode
+  const scanMode = (location.state as { scanMode?: 'full' | 'refresh' } | null)?.scanMode
   const [run, setRun] = useState(0)
   const [view, setView] = useState<ScanView>(blank)
   const logId = useRef(0)
@@ -54,43 +62,56 @@ export function ScanPage() {
   }
 
   useEffect(() => {
-    if (!state.identity || !state.authorized) return
-    const cancel = scanService.start(
-      { identity: state.identity, scenario: state.demo.scenario, persona: state.demo.persona === 'auto' ? undefined : state.demo.persona },
-      (e) => {
-        setView((v) => {
-          switch (e.type) {
-            case 'phase':
-              return { ...v, phase: e.phase }
-            case 'progress':
-              return { ...v, retrieved: e.retrieved, page: e.page }
-            case 'log':
-              return { ...v, logs: [...v.logs.slice(-7), { id: ++logId.current, text: e.text, tone: e.tone }] }
-            case 'topics':
-              return { ...v, topics: e.counts }
-            case 'achievement':
-              return { ...v, unlocked: [...v.unlocked, e.id] }
-            case 'slow':
-              return { ...v, slow: true }
-            case 'error':
-              return { ...v, error: e }
-            case 'done':
-              return { ...v, result: e.result }
-          }
-        })
-        // An empty scan shows its own state but doesn't overwrite a previous library.
-        if (e.type === 'done' && e.result.stats.retrieved > 0) dispatch({ type: 'scanned', result: e.result })
-        if (e.type === 'error') {
-          if (e.code === 'auth-expired') dispatch({ type: 'auth-expired' })
-          // Demo only: let the recovery path succeed on the next attempt.
-          dispatch({ type: 'demo', scenario: 'normal' })
+    if (fromOAuth && state.mode !== 'live') dispatch({ type: 'mode', mode: 'live' })
+  }, [fromOAuth, state.mode, dispatch])
+
+  const liveHandle = live.me?.user?.handle
+  const liveReady = live.status === 'authenticated' && live.me?.connection?.status === 'active'
+  const handle = mode === 'live' ? liveHandle : state.identity?.handle
+  const ready = mode === 'live' ? liveReady : !!state.identity && state.authorized
+
+  useEffect(() => {
+    if (!ready || !handle) return
+    const identity = { handle, displayName: handle, isDemo: mode === 'demo' }
+    const persona = state.demo.persona === 'auto' ? undefined : state.demo.persona
+    const cancel = scanServices[mode].start({ identity, scenario: state.demo.scenario, persona, mode: scanMode }, (e) => {
+      setView((v) => {
+        switch (e.type) {
+          case 'phase':
+            return { ...v, phase: e.phase }
+          case 'progress':
+            return { ...v, retrieved: e.retrieved, page: e.page }
+          case 'log':
+            return { ...v, logs: [...v.logs.slice(-7), { id: ++logId.current, text: e.text, tone: e.tone }] }
+          case 'topics':
+            return { ...v, topics: e.counts }
+          case 'achievement':
+            return { ...v, unlocked: [...v.unlocked, e.id] }
+          case 'slow':
+            return { ...v, slow: true }
+          case 'error':
+            return { ...v, error: e }
+          case 'done':
+            return { ...v, result: e.result }
         }
-      },
-    )
+      })
+      if (e.type === 'done') {
+        if (mode === 'live') live.setReport(e.result)
+        // An empty demo scan shows its own state but doesn't overwrite a previous sample library.
+        else if (e.result.stats.retrieved > 0) dispatch({ type: 'scanned', result: e.result })
+      }
+      if (e.type === 'error' && mode === 'demo') {
+        if (e.code === 'auth-expired') dispatch({ type: 'auth-expired' })
+        // Demo only: let the recovery path succeed on the next attempt.
+        dispatch({ type: 'demo', scenario: 'normal' })
+      }
+      if (e.type === 'error' && mode === 'live' && e.code === 'auth-expired') live.refresh()
+    })
     return cancel
-    // Re-run only on explicit retry; identity/scenario changes go through /connect.
+    // Re-run only on explicit retry or once the session is ready; changes to
+    // identity go through /connect.
     // oxlint-disable-next-line react-hooks/exhaustive-deps
-  }, [run])
+  }, [run, ready, handle])
 
   // Satisfying hand-off: brief pause on "report ready", then reveal.
   useEffect(() => {
@@ -101,8 +122,15 @@ export function ScanPage() {
 
   const cellColors = useMemo(() => colourCells(view), [view])
 
-  if (!state.identity) return <Navigate to="/" replace />
-  if (!state.authorized && !view.error) return <Navigate to="/connect" replace state={{ handle: state.identity.handle }} />
+  if (mode === 'live') {
+    if (live.status === 'checking') return <FlowLayout step={3}><Window title="connecting"><div className="flex items-center gap-3 p-8 font-mono text-sm text-paper-dim" role="status"><Spinner className="text-phosphor" /> checking your session…</div></Window></FlowLayout>
+    if (live.status !== 'authenticated') return <Navigate to="/connect" replace state={{ handle: state.identity?.handle }} />
+    if (!liveReady && !view.error) return <Navigate to="/connect" replace state={{ handle: liveHandle, reauth: true }} />
+  } else {
+    if (!state.identity) return <Navigate to="/" replace />
+    if (!state.authorized && !view.error) return <Navigate to="/connect" replace state={{ handle: state.identity.handle }} />
+  }
+  const shownHandle = handle ?? ''
 
   const phaseIndex = PHASES.findIndex((p) => p.id === view.phase)
   const done = !!view.result
@@ -110,10 +138,10 @@ export function ScanPage() {
 
   return (
     <FlowLayout step={done && !empty ? 4 : 3}>
-      <Window title={`scanning @${state.identity.handle}`} status={<DemoTag />}>
+      <Window title={`scanning @${shownHandle}`} status={mode === 'demo' ? <DemoTag /> : <LiveTag />}>
         {view.error ? (
           <div className="p-5 sm:p-8">
-            <ScanError code={view.error.code} message={view.error.message} retrieved={view.retrieved} onRetry={retry} handle={state.identity.handle} />
+            <ScanError code={view.error.code} message={view.error.message} retrieved={view.retrieved} onRetry={retry} handle={shownHandle} live={mode === 'live'} />
           </div>
         ) : empty ? (
           <EmptyState
@@ -232,8 +260,12 @@ export function ScanPage() {
           </div>
         )}
       </Window>
-      <p className="mt-5 text-center font-mono text-[11px] text-paper-faint">Demo scan · simulated timing and synthetic bookmarks. Production progress will come from real API pages.</p>
-      <DemoLab />
+      <p className="mt-5 text-center font-mono text-[11px] text-paper-faint">
+        {mode === 'demo'
+          ? 'Demo scan · simulated timing and synthetic bookmarks. Nothing is read from X.'
+          : 'Live scan · counts come from X API pages as they arrive. X has no total up front, so there’s no percentage.'}
+      </p>
+      {mode === 'demo' && <DemoLab />}
     </FlowLayout>
   )
 }
@@ -253,23 +285,47 @@ function colourCells(view: ScanView): (string | null)[] {
   return out
 }
 
-function ScanError({ code, message, retrieved, onRetry, handle }: { code: ScanErrorCode; message: string; retrieved: number; onRetry: () => void; handle: string }) {
+function ScanError({ code, message, retrieved, onRetry, handle, live }: { code: ScanErrorCode; message: string; retrieved: number; onRetry: () => void; handle: string; live: boolean }) {
   const navigate = useNavigate()
+  const kept = retrieved > 0 ? <> We kept the {fmt(retrieved)} bookmarks retrieved so far — nothing will be counted twice.</> : null
   if (code === 'auth-expired') {
     return (
       <ErrorState
         code="AUTH_EXPIRED"
         title="Your X connection expired"
-        body={<>{message} We retrieved {fmt(retrieved)} bookmarks before it stopped. Reconnect to finish the scan — nothing will be counted twice.</>}
-        action={<Button variant="primary" icon={<KeyRound size={14} />} onClick={() => navigate('/connect', { state: { handle, reauth: true } })}>Reconnect X</Button>}
+        body={<>{message}{kept} Reconnect to finish the scan.</>}
+        action={
+          <Button
+            variant="primary"
+            icon={<KeyRound size={14} />}
+            onClick={() => (live ? window.location.assign(startOAuthUrl(handle)) : navigate('/connect', { state: { handle, reauth: true } }))}
+          >
+            Reconnect X
+          </Button>
+        }
       />
     )
   }
+  if (code === 'cooldown') {
+    return (
+      <ErrorState
+        code="COOLDOWN"
+        title="You scanned very recently"
+        body={<>{message} Scans read from X’s paid API, so there’s a short wait between them. Your last report is still available.</>}
+        action={<Button variant="primary" onClick={() => navigate('/app')}>Open my dashboard</Button>}
+      />
+    )
+  }
+  const titles: Partial<Record<ScanErrorCode, string>> = {
+    'rate-limited': 'X’s rate limit was reached',
+    'missing-permissions': 'X refused bookmark access',
+    network: 'Connection problem',
+  }
   return (
     <ErrorState
-      code={code === 'api-error' ? 'X_API_503' : code.toUpperCase()}
-      title="The scan hit a problem"
-      body={<>{message} We got {fmt(retrieved)} bookmarks before it stopped. This is usually temporary.</>}
+      code={code === 'api-error' ? (live ? 'X_API_ERROR' : 'X_API_503') : code.toUpperCase().replace('-', '_')}
+      title={titles[code] ?? 'The scan hit a problem'}
+      body={<>{message}{kept ?? ' This is usually temporary.'}</>}
       action={
         <>
           <Button variant="primary" icon={<RotateCcw size={14} />} onClick={onRetry}>Retry scan</Button>
