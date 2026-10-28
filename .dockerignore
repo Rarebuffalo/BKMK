@@ -12,3 +12,5 @@
 !**/.env.example
 frontend/test-results
 frontend/playwright-report
+artifacts
+scripts/demo-video
