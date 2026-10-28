@@ -2,12 +2,17 @@ import { createContext, useContext, useEffect, useReducer, type ReactNode } from
 import type { DemoPersona } from '../data/demoProfile'
 import type { ScanResult } from '../domain/types'
 import type { AccountIdentity, DemoScenario } from '../services'
+import { useLive } from './live'
 
 // One small, explicit state model for the whole journey:
 //   anonymous → identified → authorized → (scanning) → scanned
 // UI components read this; services never touch it directly.
 
+export type AppMode = 'demo' | 'live'
+
 export interface SessionState {
+  /** Which data the dashboard shows. Demo data is never sent to or mixed with live data. */
+  mode: AppMode
   identity: AccountIdentity | null
   authorized: boolean
   result: ScanResult | null
@@ -25,10 +30,13 @@ type Action =
   | { type: 'demo'; scenario?: DemoScenario; persona?: DemoPersona | 'auto' }
   | { type: 'disconnect' }
   | { type: 'reset' }
+  | { type: 'mode'; mode: AppMode }
 
-const STORAGE_KEY = 'bkmk.session.v1'
+// v2: results gained `recent` and `stats.topicBreakdown`; older saved demos are discarded.
+const STORAGE_KEY = 'bkmk.session.v2'
 
 const initial: SessionState = {
+  mode: 'demo',
   identity: null,
   authorized: false,
   result: null,
@@ -63,6 +71,8 @@ function reducer(state: SessionState, action: Action): SessionState {
       return { ...initial, demo: state.demo }
     case 'reset':
       return initial
+    case 'mode':
+      return { ...state, mode: action.mode }
   }
 }
 
@@ -112,6 +122,9 @@ export function useSession() {
   return ctx
 }
 
+/** The result every dashboard page renders: the live report or the demo result, never a mix. */
 export function useResult() {
-  return useSession().state.result
+  const { state } = useSession()
+  const live = useLive()
+  return state.mode === 'live' ? live.report : state.result
 }
