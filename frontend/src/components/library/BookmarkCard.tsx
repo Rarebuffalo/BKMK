@@ -84,6 +84,7 @@ export function BookmarkCard({ bookmark: b, query = '', isDemo, onAuthor }: { bo
           </Link>
           <Tag>
             {CONTENT_TYPE_LABEL[b.contentType]}
+            {b.contentTypeCertain === false && <span title="Detected heuristically from the post text">· likely</span>}
             {b.threadLength ? ` · ${b.threadLength} posts` : ''}
           </Tag>
         </div>

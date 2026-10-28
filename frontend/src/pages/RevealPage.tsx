@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { BadgeDetailModal } from '../components/achievements/BadgeDetailModal'
 import { Avatar } from '../components/brand/Avatar'
-import { DemoTag } from '../components/brand/Demo'
+import { DemoTag, LiveTag } from '../components/brand/Demo'
 import { ArchetypeEmblem, DnaStrip, Wordmark } from '../components/brand/Pixel'
 import { ArchetypeWhy, CoverageLine, FeaturedBadges, ScoreCard, ScrambleText, TopInterests } from '../components/reveal/ReportParts'
 import { Button } from '../components/ui/Button'
@@ -11,7 +11,7 @@ import { ARCHETYPES } from '../domain/archetypes'
 import { TOPIC_BY_ID } from '../domain/topics'
 import { cx } from '../lib/cx'
 import { fmt } from '../lib/format'
-import { useSession } from '../state/session'
+import { useResult, useSession } from '../state/session'
 
 /** Delays (ms) for each reveal beat. Skipping collapses them all to zero. */
 const BEATS = [0, 500, 1100, 1900, 2500]
@@ -19,7 +19,7 @@ const BEATS = [0, 500, 1100, 1900, 2500]
 export function RevealPage() {
   const navigate = useNavigate()
   const { state, dispatch } = useSession()
-  const result = state.result!
+  const result = useResult()!
   const [instant, setInstant] = useState(state.revealSeen)
   const [badge, setBadge] = useState<string | null>(null)
   const a = ARCHETYPES[result.archetype.primary]
@@ -63,15 +63,20 @@ export function RevealPage() {
                   <div className="text-paper">@{result.handle}</div>
                   <div className="text-xs text-paper-faint">Bookmark DNA · report {result.scannedAt.slice(0, 10)}</div>
                 </div>
-                {result.isDemo && <DemoTag />}
+                {result.isDemo ? <DemoTag /> : <LiveTag />}
               </div>
 
               <div className={cx('mt-8 flex flex-col items-start gap-5 sm:flex-row sm:gap-7', instant ? '' : 'animate-pop')} style={beat(2)}>
                 <ArchetypeEmblem id={a.id} size={64} className="sm:hidden" />
                 <ArchetypeEmblem id={a.id} size={104} className="hidden sm:grid" />
                 <div className="min-w-0">
-                  <div className="eyebrow" style={{ color: a.color }}>
+                  <div className="eyebrow flex flex-wrap items-center gap-2" style={{ color: a.color }}>
                     You are // {a.code}
+                    {result.archetype.provisional && (
+                      <span className="rounded-xs border border-amber/50 px-1.5 py-px text-[10px] text-amber" title="Based on a partial scan. It may change once the full collection is scanned.">
+                        PROVISIONAL
+                      </span>
+                    )}
                   </div>
                   <h1 className="display mt-2 text-[clamp(2.4rem,7vw,4.8rem)] uppercase" style={{ color: a.color }}>
                     <ScrambleText text={a.name} run={!instant} />

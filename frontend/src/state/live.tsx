@@ -71,6 +71,8 @@ export function LiveProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     setUnauthorizedHandler(clear)
+    // Syncs with the server session on load; state updates happen after the fetch resolves.
+    // oxlint-disable-next-line react/set-state-in-effect
     refresh().then((m) => {
       if (m?.authenticated) loadReport()
     })
