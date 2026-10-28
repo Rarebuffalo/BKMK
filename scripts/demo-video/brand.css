@@ -1,0 +1,24 @@
+@font-face{font-family:Silk;src:url(../../frontend/node_modules/@fontsource/silkscreen/files/silkscreen-latin-400-normal.woff2)}
+@font-face{font-family:Silk;font-weight:700;src:url(../../frontend/node_modules/@fontsource/silkscreen/files/silkscreen-latin-700-normal.woff2)}
+@font-face{font-family:Archivo;font-weight:100 900;font-stretch:62% 125%;src:url(../../frontend/node_modules/@fontsource-variable/archivo/files/archivo-latin-wdth-normal.woff2)}
+@font-face{font-family:JBM;font-weight:100 800;src:url(../../frontend/node_modules/@fontsource-variable/jetbrains-mono/files/jetbrains-mono-latin-wght-normal.woff2)}
+:root{--ink:#0a0c0a;--paper:#ede9dd;--dim:#aeb3a4;--faint:#808a79;--ph:#86f26b}
+html,body{margin:0;height:100%;background:var(--ink);color:var(--paper);overflow:hidden}
+body{display:grid;place-items:center;background:radial-gradient(900px 500px at 50% 45%,rgba(134,242,107,.07),transparent 70%),var(--ink)}
+body::before{content:"";position:fixed;inset:0;background-image:radial-gradient(rgba(237,233,221,.07) 1px,transparent 1px);background-size:16px 16px}
+body::after{content:"";position:fixed;inset:0;pointer-events:none;background:repeating-linear-gradient(to bottom,transparent 0 2px,rgba(0,0,0,.22) 2px 3px)}
+.wrap{position:relative;text-align:center}
+.mark{font-family:Silk;font-weight:700;font-size:96px;letter-spacing:.02em;display:inline-flex;align-items:center;gap:22px}
+.mark .exe{color:var(--ph);font-weight:400}
+.glyph{width:46px;height:64px;background:var(--ph);clip-path:polygon(0 0,100% 0,100% 100%,50% 78%,0 100%)}
+.tag{font-family:Archivo;font-stretch:125%;font-weight:800;font-size:44px;letter-spacing:-.01em;margin-top:26px}
+.sub{font-family:JBM;font-size:22px;color:var(--dim);margin-top:18px}
+.boot{position:fixed;left:72px;top:64px;text-align:left;font-family:JBM;font-size:17px;color:var(--faint);line-height:1.7}
+.boot .ok{color:var(--ph)}
+.cur{display:inline-block;width:12px;height:22px;background:var(--ph);vertical-align:-4px;animation:b 1s steps(1) infinite}
+@keyframes b{50%{opacity:0}}
+@keyframes in{from{opacity:0;transform:translateY(14px) scale(.98)}to{opacity:1;transform:none}}
+@keyframes on{0%{opacity:0;filter:brightness(3)}40%{opacity:1}55%{opacity:.6}100%{opacity:1;filter:none}}
+.bars{display:flex;gap:4px;height:46px;justify-content:center;margin:34px auto 0;width:760px}
+.bars i{display:block;height:100%;transform-origin:bottom;animation:grow .5s cubic-bezier(.2,.9,.1,1) both}
+@keyframes grow{from{transform:scaleY(0)}}

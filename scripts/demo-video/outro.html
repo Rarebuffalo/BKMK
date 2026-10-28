@@ -1,0 +1,18 @@
+<!doctype html><meta charset=utf-8><link rel=stylesheet href=brand.css>
+<style>
+.mark{opacity:0;animation:in .6s .1s cubic-bezier(.2,.9,.1,1) forwards}
+.tag{opacity:0;animation:in .6s .45s cubic-bezier(.2,.9,.1,1) forwards;font-size:46px}
+.sub{opacity:0;animation:in .6s .8s cubic-bezier(.2,.9,.1,1) forwards}
+.cta{display:inline-block;margin-top:30px;opacity:0;animation:in .5s 1.15s forwards;font-family:JBM;font-weight:700;font-size:20px;letter-spacing:.08em;background:var(--ph);color:#0b1f07;padding:16px 28px;border:1px solid #000;box-shadow:5px 5px 0 #000}
+</style>
+<div class=wrap>
+ <div class=mark><span class=glyph></span><span>BKMK<span class=exe>.exe</span></span></div>
+ <div class=tag>YOUR SAVED INTERNET, DECODED.</div>
+ <div class=bars id=bars></div>
+ <div><span class=cta>SCAN YOUR BOOKMARK DNA →</span></div>
+</div>
+<script>
+const c=['#72b8ff','#86f26b','#3fd9c1','#ffb547','#ff8a5c','#ff86bd','#dcd65c','#b9a0ff','#d2a77c'];let s=7,html='';const r=()=>(s=(s*9301+49297)%233280)/233280;
+for(let i=0;i<64;i++){const w=2+Math.floor(r()*9);html+=`<i style="width:${w}px;background:${c[Math.floor(i/7.2)]};animation-delay:${.35+i*.012}s"></i>`}
+document.getElementById('bars').innerHTML=html
+</script>

@@ -1,0 +1,11 @@
+frames/
+frames.json
+frames.txt
+markers.json
+timeline.json
+master.mp4
+seg_*.mp4
+video_only.mp4
+soundtrack.wav
+card.png
+*.log
