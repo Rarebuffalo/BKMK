@@ -65,7 +65,7 @@ export const TOPICS: TopicDef[] = [
     description: 'Interfaces, typography, systems and visual references.',
     color: 'var(--topic-design)',
     family: 'craft',
-    keywords: ['design', 'typography', 'figma', 'ui', 'ux', 'font', 'color', 'layout', 'animation', 'interaction'],
+    keywords: ['design', 'typography', 'figma', 'ui', 'ux', 'font', 'color', 'colour', 'layout', 'animation', 'interaction'],
   },
   {
     id: 'security',

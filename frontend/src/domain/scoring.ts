@@ -4,10 +4,12 @@ import type { CollectionStats, CurationScore, ScoreDimension } from './types'
 // Curation Score v1. Describes the collection, not the person.
 // Each dimension is 0–25; the total is their sum. Changing any constant here
 // requires bumping SCORE_VERSION so old scores stay interpretable.
-export const SCORE_VERSION = 'score-v1'
+export const SCORE_VERSION = 'score-v2'
 
 /** Share of substantial resources that earns the full 25 for depth. */
 const DEPTH_FULL_MARKS = 0.85
+/** v2: diversity on a handful of bookmarks is noise, so ramp up until this size. */
+const FULL_SAMPLE = 30
 
 const SUBSTANTIAL_TYPES = ['thread', 'article', 'repo', 'paper', 'video', 'tool'] as const
 
@@ -22,19 +24,21 @@ export function computeScore(stats: CollectionStats): CurationScore {
   const substantial = SUBSTANTIAL_TYPES.reduce((n, t) => n + stats.contentTypeCounts[t], 0)
   const depthShare = stats.accessible ? substantial / stats.accessible : 0
   const coverage = stats.accessible ? stats.classified / stats.accessible : 0
+  const sample = Math.min(1, stats.accessible / FULL_SAMPLE)
+  const sampleNote = sample < 1 ? ` Scaled by ${Math.round(sample * 100)}% until the collection has ${FULL_SAMPLE} bookmarks.` : ''
 
   const dimensions: ScoreDimension[] = [
     {
       id: 'exploration',
       label: 'Topic exploration',
-      value: clamp25(25 * saturate(effTopics - 1, 4)),
-      explanation: `Your saves spread across about ${effTopics.toFixed(1)} effective topics. Measured on proportions, so a larger collection does not score higher by size alone.`,
+      value: clamp25(25 * saturate(effTopics - 1, 4) * sample),
+      explanation: `Your saves spread across about ${effTopics.toFixed(1)} effective topics. Measured on proportions, so a larger collection does not score higher by size alone.${sampleNote}`,
     },
     {
       id: 'diversity',
       label: 'Resource diversity',
-      value: clamp25(25 * saturate(effTypes - 1, 2.2)),
-      explanation: `A mix of about ${effTypes.toFixed(1)} effective resource types — posts, threads, articles, repos, papers, videos and tools.`,
+      value: clamp25(25 * saturate(effTypes - 1, 2.2) * sample),
+      explanation: `A mix of about ${effTypes.toFixed(1)} effective resource types — posts, threads, articles, repos, papers, videos and tools.${sampleNote}`,
     },
     {
       id: 'depth',

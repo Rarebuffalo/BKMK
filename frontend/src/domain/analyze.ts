@@ -27,6 +27,7 @@ export function analyze(input: AnalyzeInput): ScanResult {
     coverage: input.coverage,
     coverageNote: input.coverageNote,
     bookmarks,
+    recent: bookmarks.filter((b) => b.accessible).sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 5),
     stats,
     archetype: deriveArchetype(stats),
     score: computeScore(stats),

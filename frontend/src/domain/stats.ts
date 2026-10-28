@@ -6,6 +6,7 @@ export function computeStats(bookmarks: Bookmark[], retrieved = bookmarks.length
   const topicCounts = Object.fromEntries(TOPICS.map((t) => [t.id, 0])) as Record<TopicId, number>
   const contentTypeCounts = Object.fromEntries(CONTENT_TYPES.map((c) => [c.id, 0])) as Record<ContentType, number>
   const authors = new Map<string, { author: Bookmark['author']; count: number }>()
+  const perTopic = new Map<TopicId, { authors: Map<string, { author: Bookmark['author']; count: number }>; types: Partial<Record<ContentType, number>> }>()
   let repoCount = 0
 
   for (const b of accessible) {
@@ -15,7 +16,15 @@ export function computeStats(bookmarks: Bookmark[], retrieved = bookmarks.length
     const entry = authors.get(b.author.handle) ?? { author: b.author, count: 0 }
     entry.count++
     authors.set(b.author.handle, entry)
+    const t = perTopic.get(b.topic) ?? { authors: new Map(), types: {} as Partial<Record<ContentType, number>> }
+    const ta = t.authors.get(b.author.handle) ?? { author: b.author, count: 0 }
+    ta.count++
+    t.authors.set(b.author.handle, ta)
+    t.types[b.contentType] = (t.types[b.contentType] ?? 0) + 1
+    perTopic.set(b.topic, t)
   }
+  const rank = (m: Map<string, { author: Bookmark['author']; count: number }>, n: number) =>
+    [...m.values()].sort((a, b) => b.count - a.count || a.author.handle.localeCompare(b.author.handle)).slice(0, n)
 
   const classified = accessible.length - topicCounts.other
   const topTopics = TOPICS.filter((t) => t.id !== 'other' && topicCounts[t.id] > 0)
@@ -35,7 +44,8 @@ export function computeStats(bookmarks: Bookmark[], retrieved = bookmarks.length
     threadCount: contentTypeCounts.thread,
     repoShare: accessible.length ? repoCount / accessible.length : 0,
     authorCount: authors.size,
-    topAuthors: [...authors.values()].sort((a, b) => b.count - a.count || a.author.handle.localeCompare(b.author.handle)).slice(0, 8),
+    topAuthors: rank(authors, 8),
+    topicBreakdown: Object.fromEntries([...perTopic].map(([id, t]) => [id, { authors: t.authors.size, types: t.types, topAuthors: rank(t.authors, 4) }])),
     oldest: dates[0],
     newest: dates[dates.length - 1],
   }

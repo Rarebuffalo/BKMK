@@ -40,6 +40,11 @@ export interface Bookmark extends RawBookmark {
   contentType: ContentType
   /** Keywords that matched during classification — shown for transparency. */
   matched: string[]
+  /** Live data only: rules-based confidence for the primary topic (0–1). */
+  topicConfidence?: number
+  secondaryTopics?: TopicId[]
+  /** False when the content type came from a heuristic (e.g. thread markers). */
+  contentTypeCertain?: boolean
 }
 
 export type ArchetypeId =
@@ -57,6 +62,8 @@ export interface ArchetypeResult {
   /** Signal strengths 0–1 per archetype, used for the "why" explanation. */
   signals: Record<Exclude<ArchetypeId, 'collector'>, number>
   version: string
+  /** True when based on a partial scan: shown as provisional in the UI. */
+  provisional?: boolean
 }
 
 export interface ScoreDimension {
@@ -94,6 +101,8 @@ export interface CollectionStats {
   repoShare: number
   authorCount: number
   topAuthors: { author: Author; count: number }[]
+  /** Per-topic aggregates so topic pages don't need every bookmark loaded. */
+  topicBreakdown: Partial<Record<TopicId, { authors: number; types: Partial<Record<ContentType, number>>; topAuthors: { author: Author; count: number }[] }>>
   oldest?: string
   newest?: string
 }
@@ -108,7 +117,10 @@ export interface ScanResult {
   coverage: ScanCoverage
   /** Human-readable note when coverage is partial. */
   coverageNote?: string
+  /** Demo: the whole collection. Live: only `recent`; the library pages through the API. */
   bookmarks: Bookmark[]
+  /** Most recent saves for the overview. */
+  recent: Bookmark[]
   stats: CollectionStats
   archetype: ArchetypeResult
   score: CurationScore
