@@ -130,7 +130,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         dist = Path(settings.frontend_dist).resolve()
         index = dist / "index.html"
 
-        @app.get("/{path:path}", include_in_schema=False)
+        @app.api_route("/{path:path}", methods=["GET", "HEAD"], include_in_schema=False)
         def spa(path: str):
             candidate = (dist / path).resolve()
             if path and candidate.is_file() and dist in candidate.parents:
