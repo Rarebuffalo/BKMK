@@ -4,6 +4,11 @@ dist
 .DS_Store
 .local/
 .env
+.env.*
+!.env.example
+*.log
+*.pem
+*.key
 .venv/
 __pycache__/
 *.pyc
