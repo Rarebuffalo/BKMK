@@ -14,7 +14,18 @@ class Base(DeclarativeBase):
 
 @lru_cache
 def get_engine() -> Engine:
-    return create_engine(get_settings().database_url, pool_pre_ping=True, future=True)
+    # One long-running process with a small pool: Neon's direct endpoint is fine and
+    # avoids PgBouncer transaction-mode caveats. Recycling below Neon's 5-minute
+    # scale-to-zero means idle connections never outlive a suspended compute, and
+    # pre-ping replaces any that dropped anyway.
+    return create_engine(
+        get_settings().database_url,
+        pool_size=5,
+        max_overflow=5,
+        pool_recycle=280,
+        pool_pre_ping=True,
+        pool_timeout=10,
+    )
 
 
 @lru_cache
