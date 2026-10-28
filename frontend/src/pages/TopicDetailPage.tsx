@@ -14,9 +14,11 @@ export function TopicDetailPage() {
   const topic = TOPIC_BY_ID[topicId as TopicId]
   if (!topic) return <Navigate to="/app/topics" replace />
 
-  const items = result.bookmarks.filter((b) => b.accessible && b.topic === topic.id)
-  const types = CONTENT_TYPES.map((c) => ({ ...c, n: items.filter((b) => b.contentType === c.id).length })).filter((c) => c.n > 0).sort((a, b) => b.n - a.n)
-  const authors = [...items.reduce((m, b) => m.set(b.author.handle, { a: b.author, n: (m.get(b.author.handle)?.n ?? 0) + 1 }), new Map<string, { a: (typeof items)[0]['author']; n: number }>()).values()].sort((a, b) => b.n - a.n).slice(0, 4)
+  // Aggregates come from stats so the page works the same for demo and live data.
+  const count = result.stats.topicCounts[topic.id] ?? 0
+  const breakdown = result.stats.topicBreakdown?.[topic.id]
+  const types = CONTENT_TYPES.map((c) => ({ ...c, n: breakdown?.types[c.id] ?? 0 })).filter((c) => c.n > 0).sort((a, b) => b.n - a.n)
+  const authors = (breakdown?.topAuthors ?? []).map(({ author, count: n }) => ({ a: author, n }))
   const rank = result.stats.topTopics.findIndex((t) => t.topic === topic.id)
 
   return (
@@ -42,11 +44,11 @@ export function TopicDetailPage() {
           <div className="grid shrink-0 grid-cols-2 gap-6 font-mono">
             <div>
               <div className="eyebrow text-paper-faint">Saves</div>
-              <div className="mt-1 text-3xl font-bold">{fmt(items.length)}</div>
+              <div className="mt-1 text-3xl font-bold">{fmt(count)}</div>
             </div>
             <div>
               <div className="eyebrow text-paper-faint">Of library</div>
-              <div className="mt-1 text-3xl font-bold">{pct(items.length / (result.stats.accessible || 1))}</div>
+              <div className="mt-1 text-3xl font-bold">{pct(count / (result.stats.accessible || 1))}</div>
             </div>
           </div>
         </div>

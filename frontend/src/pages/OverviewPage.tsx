@@ -22,7 +22,7 @@ export function OverviewPage() {
   const { stats } = result
   const a = ARCHETYPES[result.archetype.primary]
   const [badge, setBadge] = useState<string | null>(null)
-  const recent = result.bookmarks.filter((b) => b.accessible).slice(0, 5)
+  const recent = result.recent ?? result.bookmarks.filter((b) => b.accessible).slice(0, 5)
   const types = CONTENT_TYPES.map((c, i) => ({ ...c, n: stats.contentTypeCounts[c.id], color: TYPE_SHADES[i] })).filter((c) => c.n > 0)
 
   return (

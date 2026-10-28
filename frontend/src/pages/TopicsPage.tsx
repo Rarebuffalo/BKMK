@@ -26,7 +26,7 @@ export function TopicsPage() {
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {topics.map((t) => {
           const count = stats.topicCounts[t.id]
-          const authors = new Set(result.bookmarks.filter((b) => b.accessible && b.topic === t.id).map((b) => b.author.handle)).size
+          const authors = stats.topicBreakdown?.[t.id]?.authors ?? 0
           return (
             <Link
               key={t.id}
