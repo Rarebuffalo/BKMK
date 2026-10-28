@@ -198,3 +198,17 @@ def test_spend_ledger_survives_account_deletion(client, db):
     db.expire_all()
     (row,) = db.scalars(select(ApiUsageDaily)).all()
     assert row.posts_read == FIXTURE_TOTAL and row.users_read >= 1 and row.estimated_cost_usd > 0
+
+
+def test_rotated_encryption_key_asks_for_reconnect_instead_of_crashing(client, db, monkeypatch):
+    from app.config import get_settings
+    from app.security import generate_key
+
+    csrf = login(client)
+    monkeypatch.setenv("TOKEN_ENCRYPTION_KEY", generate_key())
+    get_settings.cache_clear()
+    s = scan(client, csrf)
+    assert s["status"] == "failed" and s["errorCode"] == "auth_expired"
+    assert client.get("/api/auth/me").json()["connection"]["status"] == "expired"
+    csrf = login(client)  # reconnecting stores tokens under the new key
+    assert scan(client, csrf)["status"] == "completed"

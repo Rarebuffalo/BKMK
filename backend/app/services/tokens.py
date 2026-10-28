@@ -3,6 +3,7 @@
 import logging
 from datetime import timedelta
 
+from cryptography.exceptions import InvalidTag
 from sqlalchemy.orm import Session
 
 from ..config import Settings
@@ -53,7 +54,14 @@ def valid_access_token(
     acct = user.oauth_account
     if acct is None or acct.status == "revoked":
         raise XApiError("auth_expired", "Connect your X account to scan.")
-    access, refresh = decrypt_tokens(user, cipher)
+    try:
+        access, refresh = decrypt_tokens(user, cipher)
+    except InvalidTag:
+        # Stored under a previous TOKEN_ENCRYPTION_KEY: unusable, so ask for a reconnect.
+        log.warning("stored tokens unreadable; encryption key changed?", extra={"user_id": str(user.id)})
+        acct.status = "expired"
+        db.commit()
+        raise XApiError("auth_expired", "Your X authorization needs renewing. Reconnect to continue.") from None
     expiring = acct.expires_at is not None and acct.expires_at - REFRESH_MARGIN <= utcnow()
     if not (force_refresh or expiring or acct.status == "expired"):
         return access  # type: ignore[return-value]
