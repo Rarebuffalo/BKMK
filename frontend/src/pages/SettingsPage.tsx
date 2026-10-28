@@ -1,4 +1,4 @@
-import { Download, LogOut, RefreshCw, Trash2 } from 'lucide-react'
+import { Download, LogOut, RefreshCw, Trash2, Unplug } from 'lucide-react'
 import { useState } from 'react'
 import { Avatar } from '../components/brand/Avatar'
 import { DemoLabControls, DemoTag } from '../components/brand/Demo'
@@ -16,6 +16,7 @@ export function SettingsPage() {
   const result = useResult()
   const actions = useAccountActions()
   const connection = live.me?.connection?.status
+  const retentionDays = live.me?.dataRetentionDays ?? 0
   const [confirm, setConfirm] = useState<'disconnect' | 'delete' | null>(null)
   // Data can disappear mid-render after delete/disconnect, before navigation lands.
   if (!result) return null
@@ -42,9 +43,16 @@ export function SettingsPage() {
                 </div>
               </div>
             </div>
-            <Button variant="ghost" className="text-danger hover:text-danger" icon={<LogOut size={14} />} onClick={() => setConfirm('disconnect')}>
-              Disconnect
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              {!result.isDemo && (
+                <Button variant="secondary" icon={<LogOut size={14} />} onClick={() => actions.signOut()}>
+                  Sign out
+                </Button>
+              )}
+              <Button variant="ghost" className="text-danger hover:text-danger" icon={<Unplug size={14} />} onClick={() => setConfirm('disconnect')}>
+                Disconnect
+              </Button>
+            </div>
           </div>
         </Card>
 
@@ -83,7 +91,11 @@ export function SettingsPage() {
             <li>• Access is granted through X’s official OAuth. We never see or store your password.</li>
             <li>• We only request read access to bookmarks and your profile.</li>
             <li>• Your library is private. Share cards include totals, archetype and badges — never bookmark text, authors or links.</li>
+            {!result.isDemo && <li>• Signing out ends this browser session. Your library stays saved, so it’s there when you sign in again.</li>}
             <li>• Disconnecting revokes our token and deletes stored bookmarks.</li>
+            {!result.isDemo && retentionDays > 0 && (
+              <li>• If you don’t sign in or scan for {retentionDays} days, we revoke access and delete your stored data automatically.</li>
+            )}
             <li>• Classification and scoring are rule-based. No bookmark is sent to an AI model.</li>
           </ul>
           {result.isDemo && <p className="mt-4 rounded-sm border border-amber/30 bg-amber/5 p-3 text-xs text-amber">In this prototype everything lives in your browser’s local storage. There is no server.</p>}

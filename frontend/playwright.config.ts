@@ -37,6 +37,8 @@ export default defineConfig({
         TOKEN_ENCRYPTION_KEY: 'MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=',
         FRONTEND_URL: `http://localhost:${WEB_PORT}`,
         SCAN_COOLDOWN_SECONDS: '0',
+        // Fixture reads are free, but the spend cap still counts them across journeys.
+        X_DAILY_BUDGET_USD: '1000',
         AUTH_RATE_LIMIT_PER_MINUTE: '1000',
       },
     },

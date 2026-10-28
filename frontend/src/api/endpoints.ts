@@ -7,6 +7,8 @@ export interface Me {
   authenticated: boolean
   xConfigured: boolean
   apiMode: 'live' | 'fixture'
+  /** Days of inactivity before the server deletes stored data; 0 = kept until deleted. */
+  dataRetentionDays: number
   user: { handle: string; displayName: string | null; profileImageUrl: string | null; lastScanAt: string | null } | null
   connection: { status: 'active' | 'expired' | 'revoked'; scopes: string[]; expiresAt: string | null } | null
   csrfToken: string | null

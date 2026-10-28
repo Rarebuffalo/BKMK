@@ -31,6 +31,15 @@ export function useAccountActions() {
       }
       navigate(state.authorized ? '/scan' : '/connect', { state: { handle, reauth: !state.authorized } })
     },
+    /** Live only: ends this session. Unlike disconnect, the library stays saved. */
+    async signOut() {
+      try {
+        await api.logout()
+      } catch {
+        // Session already gone server-side: clearing local state is all that's left.
+      }
+      leaveLive('Signed out. Your library is saved for your next sign-in.')
+    },
     async disconnect() {
       if (!isLive) {
         dispatch({ type: 'disconnect' })

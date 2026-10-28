@@ -141,6 +141,29 @@ test('live sign-in → real scan → reveal → server-backed library → discon
   expect((await page.request.get('/api/dashboard')).status()).toBe(401)
 })
 
+test('live sign-out ends the session but keeps the library for the next sign-in', async ({ page }) => {
+  await liveSignIn(page, /^approve$/i)
+  await expect(page).toHaveURL(/\/reveal$/, { timeout: 25_000 })
+  await page.goto('/app/settings')
+  await expect(page.getByText(/library stays saved/i)).toBeVisible()
+  await expect(page.getByText(/don’t sign in or scan for 90 days/i)).toBeVisible()
+  await page.getByRole('button', { name: /^sign out$/i }).click()
+  await expect(page).toHaveURL(/\/$/)
+  await expect(page.getByText(/signed out/i)).toBeVisible()
+  expect((await page.request.get('/api/dashboard')).status()).toBe(401)
+
+  await liveSignIn(page, /^approve$/i)
+  await expect(page).toHaveURL(/\/scan|\/reveal/)
+  expect((await page.request.get('/api/dashboard')).status()).toBe(200)
+
+  // Leave no library behind for the journeys that follow.
+  await expect(page).toHaveURL(/\/reveal$/, { timeout: 25_000 })
+  await page.goto('/app/settings')
+  await page.getByRole('button', { name: /^disconnect$/i }).click()
+  await page.getByRole('dialog').getByRole('button', { name: /^disconnect$/i }).click()
+  await expect(page).toHaveURL(/\/$/)
+})
+
 test('live rate-limited scan is partial and labelled provisional', async ({ page }) => {
   await liveSignIn(page, /rate-limited/i)
   await expect(page).toHaveURL(/\/reveal$/, { timeout: 25_000 })
