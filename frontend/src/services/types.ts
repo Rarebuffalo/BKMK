@@ -17,7 +17,7 @@ export type AuthOutcome = 'granted' | 'denied' | 'cancelled'
 
 export type ScanPhase = 'connect' | 'retrieve' | 'topics' | 'classify' | 'stats' | 'achievements' | 'report'
 
-export type ScanErrorCode = 'api-error' | 'auth-expired' | 'rate-limited' | 'network' | 'cooldown' | 'missing-permissions'
+export type ScanErrorCode = 'api-error' | 'auth-expired' | 'rate-limited' | 'network' | 'cooldown' | 'daily-budget' | 'missing-permissions'
 
 export type ScanEvent =
   | { type: 'phase'; phase: ScanPhase }

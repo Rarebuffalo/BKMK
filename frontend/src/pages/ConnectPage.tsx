@@ -175,6 +175,7 @@ const FAILURE_COPY: Record<string, string> = {
   exchange_failed: 'X didn’t accept the sign-in. Try again in a moment.',
   provider_error: 'X reported an error during sign-in. Nothing was saved.',
   invalid_handle: 'That handle isn’t valid. Check it and try again.',
+  not_invited: 'BKMK.exe is in a private beta and this X account isn’t on the list yet. Access was handed back to X and nothing was saved. You can still try the demo.',
 }
 
 function LiveConnect() {

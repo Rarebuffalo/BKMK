@@ -22,6 +22,8 @@ function errorCode(code: string | null | undefined): ScanErrorCode {
       return 'rate-limited'
     case 'scan_cooldown':
       return 'cooldown'
+    case 'daily_budget':
+      return 'daily-budget'
     case 'network':
       return 'network'
     case 'missing_permissions':
@@ -47,7 +49,7 @@ export const liveScanService: ScanService = {
       } catch (e) {
         const code = isApiError(e) ? e.code : 'network'
         const message = isApiError(e) ? e.message : 'Couldn’t start the scan.'
-        emit({ type: 'error', code: errorCode(code), message, retryable: code !== 'scan_cooldown' })
+        emit({ type: 'error', code: errorCode(code), message, retryable: code !== 'scan_cooldown' && code !== 'daily_budget' })
         return
       }
       emit({ type: 'log', text: `scan ${scan.id.slice(0, 8)} · ${scan.mode} · limit ${scan.requestedLimit}`, tone: 'muted' })

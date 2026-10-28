@@ -316,6 +316,16 @@ function ScanError({ code, message, retrieved, onRetry, handle, live }: { code: 
       />
     )
   }
+  if (code === 'daily-budget') {
+    return (
+      <ErrorState
+        code="DAILY_BUDGET"
+        title="Today’s scanning budget is used up"
+        body={<>{message} BKMK.exe caps how much of X’s paid API it uses per day. Your last report is still available.</>}
+        action={<Button variant="primary" onClick={() => navigate('/app')}>Open my dashboard</Button>}
+      />
+    )
+  }
   const titles: Partial<Record<ScanErrorCode, string>> = {
     'rate-limited': 'X’s rate limit was reached',
     'missing-permissions': 'X refused bookmark access',

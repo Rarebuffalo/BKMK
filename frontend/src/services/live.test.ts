@@ -91,4 +91,10 @@ describe('live scan service', () => {
     const last = (await collect()).at(-1)
     expect(last).toMatchObject({ type: 'error', code: 'cooldown', retryable: false })
   })
+
+  it('maps the daily API budget to a non-retryable error', async () => {
+    startScan.mockRejectedValue(new ApiError(429, 'daily_budget', 'Today’s scanning budget is used up.'))
+    const last = (await collect()).at(-1)
+    expect(last).toMatchObject({ type: 'error', code: 'daily-budget', retryable: false })
+  })
 })
