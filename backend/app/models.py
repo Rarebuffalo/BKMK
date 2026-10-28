@@ -150,6 +150,8 @@ class Bookmark(Base):
     x_created_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     conversation_id: Mapped[str | None] = mapped_column(String(32))
     thread_hint: Mapped[bool] = mapped_column(Boolean, default=False)
+    # X note_tweet: a long-form post. Kept so reclassification doesn't need X again.
+    long_form: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     first_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     last_seen_scan_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("scans.id", ondelete="SET NULL"))
