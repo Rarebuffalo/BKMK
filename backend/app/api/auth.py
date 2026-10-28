@@ -19,6 +19,7 @@ from ..models import AppSession, OAuthState, User, utcnow
 from ..ratelimit import enforce
 from ..schemas import ConnectionOut, MeOut, UserOut
 from ..security import TokenCipher, constant_time_equals, keyed_hash, new_opaque_token, pkce_challenge, pkce_verifier
+from ..services.budget import record_usage
 from ..services.library import delete_account
 from ..services.tokens import store_tokens
 from ..sessions import CurrentSession, clear_session_cookie, create_session, optional_session, require_csrf
@@ -136,6 +137,7 @@ def callback(
     try:
         tokens = client.exchange_code(code, verifier)
         me = client.get_me(tokens.access_token)
+        record_usage(db, settings, requests=1, posts=0, users=1)
     except XApiError as exc:
         log.warning("oauth exchange failed", extra={"code": exc.code, "status": exc.status})
         return fail("exchange_failed")

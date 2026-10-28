@@ -164,3 +164,37 @@ def test_users_cannot_see_each_others_data(client):
         assert bm_a not in ids_b
         assert other.get("/api/dashboard").json()["handle"] == "bkmk_other"
     assert client.get("/api/dashboard").json()["handle"] == "bkmk_fixture"
+
+
+def _budget(monkeypatch, usd: str) -> None:
+    from app.config import get_settings
+
+    monkeypatch.setenv("X_DAILY_BUDGET_USD", usd)
+    get_settings.cache_clear()
+
+
+def test_scans_refuse_to_start_once_the_daily_budget_is_spent(client, monkeypatch):
+    csrf = login(client)
+    _budget(monkeypatch, "0.50")  # less than one worst-case page
+    r = client.post("/api/scans", json={}, headers={"X-CSRF-Token": csrf})
+    assert r.status_code == 429 and r.json()["code"] == "daily_budget" and r.json()["retryAfter"] > 0
+
+
+def test_scan_stops_early_at_the_daily_budget_and_keeps_what_it_read(client, db, monkeypatch):
+    csrf = login(client)
+    _budget(monkeypatch, "1.51")  # the sign-in user read plus one worst-case page of 100
+    s = scan(client, csrf, "full")
+    assert s["status"] == "partial" and s["stopReason"] == "daily_budget" and s["pages"] == 1
+    assert 0 < s["retrieved"] < FIXTURE_TOTAL and count(db, Bookmark) == s["retrieved"]
+    assert "budget" in s["coverageNote"]
+
+
+def test_spend_ledger_survives_account_deletion(client, db):
+    from app.models import ApiUsageDaily
+
+    csrf = login(client)
+    scan(client, csrf, "full")
+    assert client.request("DELETE", "/api/account", headers={"X-CSRF-Token": csrf}).status_code == 200
+    db.expire_all()
+    (row,) = db.scalars(select(ApiUsageDaily)).all()
+    assert row.posts_read == FIXTURE_TOTAL and row.users_read >= 1 and row.estimated_cost_usd > 0

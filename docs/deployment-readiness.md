@@ -61,7 +61,7 @@ Baseline before any change: 107 backend tests passed; ruff and format checks wer
 See "Changes" in [deployment.md](deployment.md) for files and tests.
 
 1. **Spend controls.**
-   - `X_DAILY_BUDGET_USD` sets a global daily cap (default $1.00). It is tracked in a usage ledger that survives account deletion. Scans refuse to start, or stop early and keep what they have, once it's reached.
+   - `X_DAILY_BUDGET_USD` sets a global daily cap (default $5.00). It is tracked in a usage ledger that survives account deletion. Scans refuse to start, or stop early and keep what they have, once it's reached.
    - `ALLOWED_X_USERNAMES` is an optional sign-in allowlist for a private beta.
    - The suggested `SCAN_MAX_BOOKMARKS` for the free launch is 200.
 2. **Separate sign-out.** It ends the session and keeps data. Disconnect and Delete stay destructive, and the UI says which is which.

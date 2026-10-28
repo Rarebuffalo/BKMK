@@ -32,6 +32,7 @@ from ..rules.report import (
     evaluate_achievements,
     rules_version,
 )
+from .budget import can_afford, record_usage, seconds_until_reset
 from .tokens import cipher_for, valid_access_token
 
 log = logging.getLogger("bkmk.scan")
@@ -64,6 +65,15 @@ def create_scan(db: Session, user: User, settings: Settings, mode: str | None) -
                     "retryAfter": int(wait),
                 },
             )
+    if not can_afford(db, settings, settings.scan_page_size):
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            detail={
+                "code": "daily_budget",
+                "message": "Today's scanning budget is used up. Scans resume after midnight UTC.",
+                "retryAfter": seconds_until_reset(),
+            },
+        )
     has_bookmarks = db.scalar(select(Bookmark.id).where(Bookmark.user_id == user.id).limit(1)) is not None
     resolved = mode if mode in ("full", "refresh") else ("refresh" if has_bookmarks else "full")
     scan = Scan(
@@ -115,6 +125,7 @@ class _Run:
         self.db.commit()
 
     def account_usage(self, posts: int, users: int, requests: int = 1) -> None:
+        record_usage(self.db, self.s, requests=requests, posts=posts, users=users)
         self.scan.api_requests += requests
         self.posts_read += posts
         self.users_read += users
@@ -315,6 +326,8 @@ def run_scan(
         note = None
         if scan.stop_reason == "scan_limit":
             note = f"Stopped at the scan limit of {scan.requested_limit} bookmarks. Older bookmarks were not analysed."
+        elif scan.stop_reason == "daily_budget":
+            note = "Stopped early: today's API budget was reached. Rescan after midnight UTC to continue."
         elif complete and scan.mode == "full":
             note = "Includes every bookmark X made available to this app (X returns up to your most recent ~800)."
         unlocked = _compute_report(run, coverage="complete" if complete else "partial", note=note)
@@ -362,6 +375,9 @@ def _retrieve(run: _Run, token: str, cipher) -> None:
         remaining = scan.requested_limit - scan.retrieved
         if remaining <= 0:
             scan.stop_reason = "scan_limit"
+            return
+        if not can_afford(db, s, min(page_size, remaining)):
+            scan.stop_reason = "daily_budget"
             return
         try:
             page = run.client.get_bookmarks_page(

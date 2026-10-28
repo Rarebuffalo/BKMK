@@ -15,6 +15,7 @@ os.environ.update(
         "TOKEN_ENCRYPTION_KEY": "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=",
         "FRONTEND_URL": "http://frontend.test",
         "SCAN_COOLDOWN_SECONDS": "0",
+        "X_DAILY_BUDGET_USD": "1000",
         "X_CLIENT_ID": "",
         "X_CLIENT_SECRET": "",
     }
@@ -33,9 +34,7 @@ from app.ratelimit import limiter  # noqa: E402
 
 assert "test" in os.environ["DATABASE_URL"], "refusing to run tests against a non-test database"
 
-TABLES = (
-    "bookmark_tags, bookmarks, user_achievements, profile_stats, scans, sessions, oauth_accounts, oauth_states, users"
-)
+TABLES = "api_usage_daily, bookmark_tags, bookmarks, user_achievements, profile_stats, scans, sessions, oauth_accounts, oauth_states, users"
 
 
 @pytest.fixture(scope="session", autouse=True)

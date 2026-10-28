@@ -62,6 +62,8 @@ class Settings(BaseSettings):
     # ── Pricing used for cost estimates (USD, pay-per-use, verified 2026-10-28) ──
     x_price_post_read: Decimal = Decimal("0.005")
     x_price_user_read: Decimal = Decimal("0.010")
+    # Global cap on estimated X spend per UTC day, across all users. 0 disables live scans.
+    x_daily_budget_usd: Decimal = Decimal("5.00")
 
     # ── Abuse protection ──
     auth_rate_limit_per_minute: int = 20

@@ -1,12 +1,13 @@
 """Persistence model. Every user-owned row carries user_id and is deleted with the user."""
 
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 
 from sqlalchemy import (
     JSON,
     Boolean,
+    Date,
     DateTime,
     Float,
     ForeignKey,
@@ -203,3 +204,16 @@ class ProfileStats(Base):
     archetype: Mapped[dict] = mapped_column(JSON)
     rules_version: Mapped[str] = mapped_column(String(128))
     computed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class ApiUsageDaily(Base):
+    """X API spend per UTC day, across all users. Not tied to accounts, so deleting
+    an account and reconnecting can't reset it. Holds counts only, no user data."""
+
+    __tablename__ = "api_usage_daily"
+
+    day: Mapped[date] = mapped_column(Date, primary_key=True)
+    requests: Mapped[int] = mapped_column(Integer, default=0)
+    posts_read: Mapped[int] = mapped_column(Integer, default=0)
+    users_read: Mapped[int] = mapped_column(Integer, default=0)
+    estimated_cost_usd: Mapped[Decimal] = mapped_column(Numeric(10, 4), default=Decimal("0"))
