@@ -156,6 +156,15 @@ def test_state_changing_requests_need_csrf(client):
     assert client.post("/api/scans", json={}, headers={"X-CSRF-Token": "nope"}).json()["code"] == "csrf_failed"
 
 
+def test_state_changing_requests_from_a_foreign_origin_are_refused(client):
+    csrf = login(client)
+    evil = client.post("/api/auth/logout", headers={"X-CSRF-Token": csrf, "Origin": "https://evil.example"})
+    assert evil.status_code == 403 and evil.json()["code"] == "origin_rejected"
+    assert client.get("/api/auth/me").json()["authenticated"] is True
+    ok = client.post("/api/auth/logout", headers={"X-CSRF-Token": csrf, "Origin": "http://frontend.test"})
+    assert ok.status_code == 204
+
+
 def test_logout_ends_session(client):
     csrf = login(client)
     assert client.post("/api/auth/logout", headers={"X-CSRF-Token": csrf}).status_code == 204

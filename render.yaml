@@ -13,8 +13,6 @@ services:
         fromDatabase: { name: bkmk-db, property: connectionString }
       - key: FRONTEND_URL
         sync: false # e.g. https://bkmk.onrender.com
-      - key: BACKEND_URL
-        sync: false # same origin as FRONTEND_URL
       - key: X_REDIRECT_URI
         sync: false # https://<host>/api/auth/x/callback — must match the X app exactly
       - key: X_CLIENT_ID

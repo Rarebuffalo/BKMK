@@ -81,8 +81,18 @@ def require_session(current: CurrentSession | None = Depends(optional_session)) 
     return current
 
 
-def require_csrf(request: Request, current: CurrentSession = Depends(require_session)) -> CurrentSession:
+def require_csrf(
+    request: Request,
+    current: CurrentSession = Depends(require_session),
+    settings: Settings = Depends(get_settings),
+) -> CurrentSession:
     """For state-changing requests: SameSite=Lax blocks most CSRF; this closes the rest."""
+    # Defence in depth: browsers always send Origin on POST/DELETE; a foreign one is refused.
+    origin = request.headers.get("origin")
+    if origin is not None and origin.rstrip("/") not in settings.trusted_origins:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN, detail={"code": "origin_rejected", "message": "Request origin not allowed."}
+        )
     token = request.headers.get(CSRF_HEADER, "")
     if not token or not constant_time_equals(token, current.session.csrf_token):
         raise HTTPException(

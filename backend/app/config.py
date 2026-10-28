@@ -23,8 +23,9 @@ class Settings(BaseSettings):
     environment: Literal["development", "test", "production"] = "development"
     database_url: str = "postgresql+psycopg://bkmk@localhost:54329/bkmk"
 
+    # The browser-facing origin (Vercel in production). OAuth redirects go here and
+    # state-changing requests must come from it.
     frontend_url: str = "http://localhost:5173"
-    backend_url: str = "http://localhost:8000"
     # Only needed when the SPA is served from a different origin than the API.
     allowed_origins: list[str] = Field(default_factory=list)
     # Absolute path to the built SPA. When set, the API serves it (same-origin deploy).
@@ -105,7 +106,7 @@ class Settings(BaseSettings):
                 raise ValueError(f"Missing required production settings: {', '.join(n.upper() for n in missing)}")
             if self.x_api_mode != "live":
                 raise ValueError("X_API_MODE=fixture is not allowed in production")
-            for name in ("frontend_url", "backend_url", "x_redirect_uri"):
+            for name in ("frontend_url", "x_redirect_uri"):
                 if not getattr(self, name).startswith("https://"):
                     raise ValueError(f"{name.upper()} must use https in production")
         return self
@@ -115,6 +116,10 @@ class Settings(BaseSettings):
         if self.cookie_secure is not None:
             return self.cookie_secure
         return self.environment == "production"
+
+    @property
+    def trusted_origins(self) -> set[str]:
+        return {self.frontend_url.rstrip("/"), *(o.rstrip("/") for o in self.allowed_origins)}
 
     @property
     def x_configured(self) -> bool:
