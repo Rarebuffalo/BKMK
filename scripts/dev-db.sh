@@ -17,11 +17,11 @@ case "$cmd" in
     if ! pg_ctl -D "$PGDATA" status >/dev/null 2>&1; then
       pg_ctl -D "$PGDATA" -l "$PGDATA/server.log" -o "-p $PORT -k $PGDATA -c listen_addresses=localhost" -w start >/dev/null
     fi
-    for db in bkmk bkmk_test; do
+    for db in bkmk bkmk_test bkmk_e2e; do
       psql -h localhost -p "$PORT" -U bkmk -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='$db'" | grep -q 1 \
         || createdb -h localhost -p "$PORT" -U bkmk "$db"
     done
-    echo "postgres running on localhost:$PORT (databases: bkmk, bkmk_test)"
+    echo "postgres running on localhost:$PORT (databases: bkmk, bkmk_test, bkmk_e2e)"
     ;;
   stop) pg_ctl -D "$PGDATA" -m fast stop ;;
   status) pg_ctl -D "$PGDATA" status ;;
