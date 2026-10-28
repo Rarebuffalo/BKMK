@@ -13,10 +13,12 @@ import { useResult } from '../state/session'
 
 export function SettingsPage() {
   const live = useLive()
-  const result = useResult()!
+  const result = useResult()
   const actions = useAccountActions()
   const connection = live.me?.connection?.status
   const [confirm, setConfirm] = useState<'disconnect' | 'delete' | null>(null)
+  // Data can disappear mid-render after delete/disconnect, before navigation lands.
+  if (!result) return null
 
   return (
     <>
