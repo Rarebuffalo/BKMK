@@ -7,7 +7,7 @@ import { computeScore } from './scoring'
 import { computeStats } from './stats'
 
 const run = (handle: string, persona: DemoPersona) =>
-  analyze({ handle, displayName: handle, isDemo: true, raw: generateDemoBookmarks(handle, persona), coverage: 'complete', scannedAt: 'x' })
+  analyze({ handle, displayName: handle, isDemo: true, source: 'demo', raw: generateDemoBookmarks(handle, persona), coverage: 'complete', scannedAt: 'x' })
 
 describe('demo rules', () => {
   it('is deterministic for the same handle and persona', () => {

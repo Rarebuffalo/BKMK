@@ -3,12 +3,14 @@ import { deriveArchetype } from './archetypes'
 import { classify } from './classifier'
 import { computeScore } from './scoring'
 import { computeStats } from './stats'
-import type { RawBookmark, ScanCoverage, ScanResult } from './types'
+import type { ImportInfo, RawBookmark, ResultSource, ScanCoverage, ScanResult } from './types'
 
 export interface AnalyzeInput {
   handle: string
   displayName: string
   isDemo: boolean
+  source: ResultSource
+  importInfo?: ImportInfo
   raw: RawBookmark[]
   coverage: ScanCoverage
   coverageNote?: string
@@ -23,6 +25,8 @@ export function analyze(input: AnalyzeInput): ScanResult {
     handle: input.handle,
     displayName: input.displayName,
     isDemo: input.isDemo,
+    source: input.source,
+    importInfo: input.importInfo,
     scannedAt: input.scannedAt,
     coverage: input.coverage,
     coverageNote: input.coverageNote,

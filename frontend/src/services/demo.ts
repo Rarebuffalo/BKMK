@@ -70,6 +70,7 @@ export const demoScanService: ScanService = {
         handle: identity.handle,
         displayName: identity.displayName,
         isDemo: true,
+        source: 'demo',
         raw,
         coverage: partial ? 'partial' : 'complete',
         coverageNote: partial

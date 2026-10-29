@@ -9,7 +9,7 @@ import { LiveProvider } from '../state/live'
 import { SessionProvider } from '../state/session'
 
 export const demoResult = () =>
-  analyze({ handle: 'demo', displayName: 'demo', isDemo: true, raw: generateDemoBookmarks('demo', 'builder'), coverage: 'complete', scannedAt: '2026-10-28T10:00:00Z' })
+  analyze({ handle: 'demo', displayName: 'demo', isDemo: true, source: 'demo', raw: generateDemoBookmarks('demo', 'builder'), coverage: 'complete', scannedAt: '2026-10-28T10:00:00Z' })
 
 /** Seeds a finished demo session, as if the user had just run the demo scan. */
 export function seedDemoSession() {

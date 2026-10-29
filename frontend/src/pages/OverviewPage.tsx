@@ -107,7 +107,7 @@ export function OverviewPage() {
                 <div className="min-w-0 flex-1">
                   <p className="line-clamp-2 text-sm">{b.text}</p>
                   <div className="mt-1 font-mono text-[11px] text-paper-faint">
-                    @{b.author.handle} · {formatDate(b.createdAt)} · {TOPIC_BY_ID[b.topic].short}
+                    {b.author.handle ? `@${b.author.handle}` : 'author not in import'} · {formatDate(b.createdAt)} · {TOPIC_BY_ID[b.topic].short}
                   </div>
                 </div>
               </li>

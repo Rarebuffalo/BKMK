@@ -35,7 +35,7 @@ export function demoLibrary(result: ScanResult, now: number): LibrarySource {
       for (const b of scope) {
         if (!b.accessible) continue
         types[b.contentType] = (types[b.contentType] ?? 0) + 1
-        authors.set(b.author.handle, (authors.get(b.author.handle) ?? 0) + 1)
+        if (b.author.handle) authors.set(b.author.handle, (authors.get(b.author.handle) ?? 0) + 1)
       }
       return {
         items: matched.slice(offset, offset + limit),

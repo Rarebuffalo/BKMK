@@ -3,6 +3,7 @@ export const fmt = (n: number) => n.toLocaleString('en-US')
 export const pct = (x: number) => `${Math.round(x * 100)}%`
 
 export function formatDate(iso: string, opts: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short', year: 'numeric' }) {
+  if (!iso) return 'date unknown'
   return new Date(iso).toLocaleDateString('en-GB', opts)
 }
 

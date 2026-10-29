@@ -13,6 +13,13 @@ export function computeStats(bookmarks: Bookmark[], retrieved = bookmarks.length
     topicCounts[b.topic]++
     contentTypeCounts[b.contentType]++
     if (b.contentType === 'repo') repoCount++
+    if (!b.author.handle) {
+      // Unknown author (e.g. archive Likes): count the post, not a fake author.
+      const t = perTopic.get(b.topic) ?? { authors: new Map(), types: {} as Partial<Record<ContentType, number>> }
+      t.types[b.contentType] = (t.types[b.contentType] ?? 0) + 1
+      perTopic.set(b.topic, t)
+      continue
+    }
     const entry = authors.get(b.author.handle) ?? { author: b.author, count: 0 }
     entry.count++
     authors.set(b.author.handle, entry)
@@ -31,7 +38,7 @@ export function computeStats(bookmarks: Bookmark[], retrieved = bookmarks.length
     .map((t) => ({ topic: t.id, count: topicCounts[t.id], share: classified ? topicCounts[t.id] / classified : 0 }))
     .sort((a, b) => b.count - a.count || a.topic.localeCompare(b.topic))
 
-  const dates = accessible.map((b) => b.createdAt).sort()
+  const dates = accessible.map((b) => b.createdAt).filter(Boolean).sort()
 
   return {
     retrieved,

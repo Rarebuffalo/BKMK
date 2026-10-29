@@ -10,6 +10,7 @@ export function sampleResult(): ScanResult {
     handle: 'yourhandle',
     displayName: 'Sample',
     isDemo: true,
+    source: 'demo',
     raw: generateDemoBookmarks('demo', 'builder'),
     coverage: 'complete',
     scannedAt: '2026-10-20T12:00:00.000Z',

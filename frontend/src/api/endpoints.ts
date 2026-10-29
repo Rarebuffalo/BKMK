@@ -147,6 +147,7 @@ export function toScanResult(r: ApiReport): ScanResult {
     handle: r.handle,
     displayName: r.displayName,
     isDemo: false,
+    source: 'live',
     scannedAt: r.scannedAt,
     coverage: r.coverage,
     coverageNote: r.coverageNote ?? undefined,

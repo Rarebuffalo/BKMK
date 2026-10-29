@@ -23,7 +23,7 @@ describe('handle validation', () => {
   })
 })
 
-const result = analyze({ handle: 'demo', displayName: 'demo', isDemo: true, raw: generateDemoBookmarks('demo', 'builder'), coverage: 'complete', scannedAt: 'x' })
+const result = analyze({ handle: 'demo', displayName: 'demo', isDemo: true, source: 'demo', raw: generateDemoBookmarks('demo', 'builder'), coverage: 'complete', scannedAt: 'x' })
 const NOW = Date.UTC(2026, 9, 28)
 
 describe('library filters', () => {

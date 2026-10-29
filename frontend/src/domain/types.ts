@@ -16,6 +16,7 @@ export type TopicId =
 export type ContentType = 'post' | 'thread' | 'article' | 'repo' | 'paper' | 'video' | 'tool'
 
 export interface Author {
+  /** Empty when the source didn't include the author (e.g. archive Likes). */
   handle: string
   name: string
 }
@@ -25,7 +26,7 @@ export interface RawBookmark {
   id: string
   author: Author
   text: string
-  /** When the post was created (ISO). X does not expose when it was bookmarked. */
+  /** When the post was created (ISO), or '' if unknown. X does not expose when it was bookmarked. */
   createdAt: string
   url: string
   links: string[]
@@ -109,10 +110,30 @@ export interface CollectionStats {
 
 export type ScanCoverage = 'complete' | 'partial'
 
+/** Where a result came from. Optional for results saved before imports existed. */
+export type ResultSource = 'demo' | 'import' | 'live'
+
+/** What an import contained: shown so missing data is never mistaken for a low score. */
+export interface ImportInfo {
+  /** X's archive holds Likes, not bookmarks. */
+  kind: 'likes' | 'bookmarks'
+  formats: string[]
+  files: number
+  total: number
+  duplicates: number
+  skipped: number
+  withText: number
+  withAuthor: number
+  withDate: number
+  truncated: number
+}
+
 export interface ScanResult {
   handle: string
   displayName: string
   isDemo: boolean
+  source?: ResultSource
+  importInfo?: ImportInfo
   scannedAt: string
   coverage: ScanCoverage
   /** Human-readable note when coverage is partial. */

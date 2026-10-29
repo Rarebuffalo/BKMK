@@ -37,7 +37,7 @@ export function BookmarkCard({ bookmark: b, query = '', isDemo, onAuthor }: { bo
     return (
       <article className="panel border-dashed p-4 text-sm text-paper-faint">
         <div className="flex items-center justify-between gap-2 font-mono text-xs">
-          <span>@{b.author.handle}</span>
+          <span>{b.author.handle ? `@${b.author.handle}` : 'author not in import'}</span>
           <span>{formatDate(b.createdAt)}</span>
         </div>
         <p className="mt-2">This post is no longer available — it was deleted or made private after you saved it. It isn’t counted in your score.</p>
@@ -53,9 +53,11 @@ export function BookmarkCard({ bookmark: b, query = '', isDemo, onAuthor }: { bo
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-baseline gap-x-2">
             <span className="truncate text-sm font-semibold">{b.author.name}</span>
-            <button type="button" onClick={() => onAuthor?.(b.author.handle)} className="font-mono text-xs text-paper-faint hover:text-phosphor" title="Filter by this author">
-              @{b.author.handle}
-            </button>
+            {b.author.handle && (
+              <button type="button" onClick={() => onAuthor?.(b.author.handle)} className="font-mono text-xs text-paper-faint hover:text-phosphor" title="Filter by this author">
+                @{b.author.handle}
+              </button>
+            )}
           </div>
           <time dateTime={b.createdAt} className="font-mono text-[11px] text-paper-faint">
             {formatDate(b.createdAt)}
@@ -64,7 +66,7 @@ export function BookmarkCard({ bookmark: b, query = '', isDemo, onAuthor }: { bo
       </header>
 
       <p className="mt-3 text-[15px] leading-relaxed text-paper">
-        <Highlight text={b.text} query={query} />
+        {b.text ? <Highlight text={b.text} query={query} /> : <span className="text-paper-faint italic">Post text isn’t in your import. Open it on X to read it.</span>}
       </p>
 
       {link && (

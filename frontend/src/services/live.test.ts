@@ -38,7 +38,7 @@ const base: ApiScan = {
   completedAt: null,
 }
 
-const empty = analyze({ handle: 'u', displayName: 'u', isDemo: false, raw: [], coverage: 'complete', scannedAt: '2026-10-28T00:00:00Z' })
+const empty = analyze({ handle: 'u', displayName: 'u', isDemo: false, source: 'live', raw: [], coverage: 'complete', scannedAt: '2026-10-28T00:00:00Z' })
 const report: ApiReport = { ...empty, coverageNote: null, recent: [], scan: null, achievements: empty.achievements.map((a) => ({ ...a, unlockedAt: null, rulesVersion: null })) }
 
 function collect(): Promise<ScanEvent[]> {
