@@ -118,6 +118,10 @@ Edit `frontend/vercel.json` and put the API rewrite **first** in `rewrites`, usi
 
 Commit and push; Vercel redeploys.
 
+Production is configured this way: `https://bkmk-ashy.vercel.app` proxies `/api/*` to `https://bkmk-api.onrender.com`.
+
+If `/api/*` on Vercel still returns Vercel's `NOT_FOUND` after a push, check that the commit actually deployed. The commit on GitHub should carry a "Vercel" status. If it doesn't, the push event never reached Vercel. Go to Vercel → Deployments → **Create Deployment** and pick `main`, rather than redeploying an older deployment, which rebuilds the old commit.
+
 This is a file edit rather than a setting because Vercel rewrites can't read environment variables. Use the URL Render gave *you*: pointing at someone else's service would send them your users' cookies.
 
 ### 9. Migrations
