@@ -41,7 +41,7 @@ test('import archive likes → local analysis → reveal → library, with no X 
     const url = r.url()
     if (url.includes('/api/scans') || url.includes('/api/auth/x') || url.includes('api.x.com')) apiCalls.push(url)
   })
-  await page.goto('/import')
+  await page.goto('/import?via=files')
   await expect(page.getByRole('heading', { name: /analyse your saves for free/i })).toBeVisible()
   await page.locator('#import-files').setInputFiles([
     { name: 'like.js', mimeType: 'text/javascript', buffer: Buffer.from(likeJs) },
@@ -66,6 +66,55 @@ test('import archive likes → local analysis → reveal → library, with no X 
   expect(apiCalls).toEqual([])
 })
 
+/** x.com-shaped clipboard HTML for a screenful of bookmarks (synthetic content). */
+const pastedScreen = (posts: [string, string, string][]) =>
+  posts
+    .map(
+      ([id, handle, text]) => `<article data-testid="tweet"><div data-testid="User-Name"><a href="/${handle}">${handle} name</a><a href="/${handle}">@${handle}</a>` +
+        `<a href="https://x.com/${handle}/status/${id}"><time datetime="2026-09-01T10:00:00.000Z">Sep 1</time></a></div><div data-testid="tweetText" lang="en">${text}</div></article>`,
+    )
+    .join('')
+
+async function paste(page: Page, html: string) {
+  await page.locator('#paste-target').evaluate((el, h) => {
+    const dt = new DataTransfer()
+    dt.setData('text/html', h)
+    dt.setData('text/plain', 'copied')
+    el.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }))
+  }, html)
+}
+
+test('copy from X → paste screens → instant reveal, with no X or API calls', async ({ page }) => {
+  const calls: string[] = []
+  page.on('request', (r) => {
+    if (/\/api\/(scans|auth\/x)|x\.com|twitter\.com/.test(r.url())) calls.push(r.url())
+  })
+  await page.goto('/import')
+  await expect(page.getByRole('link', { name: /x\.com\/i\/bookmarks/i })).toHaveAttribute('href', 'https://x.com/i/bookmarks')
+  await paste(page, pastedScreen([
+    ['1850000000000000001', 'ada', 'Evaluating LLM agents with RAG benchmarks'],
+    ['1850000000000000002', 'grace', 'Postgres query planner internals and indexing'],
+  ]))
+  await expect(page.getByText(/\+2 new/)).toBeVisible()
+  await paste(page, pastedScreen([
+    ['1850000000000000002', 'grace', 'Postgres query planner internals and indexing'],
+    ['1850000000000000003', 'linus', 'Figma design tokens and typography scales'],
+  ]))
+  await expect(page.getByText(/\+1 new · 1 already captured/)).toBeVisible()
+  await expect(page.getByText(/bookmarks captured/)).toContainText('3')
+  await paste(page, '<p>not a post</p>')
+  await expect(page.getByText(/no x posts in that paste/i)).toBeVisible()
+
+  await page.locator('#paste-handle').fill('ada_builds')
+  await page.getByRole('button', { name: /analyse 3 bookmarks/i }).click()
+  await expect(page.getByText('IMPORTED').first()).toBeVisible()
+  await expect(page).toHaveURL(/\/reveal$/, { timeout: 20_000 })
+  await page.goto('/app/library')
+  await expect(page.getByText(/query planner internals/)).toBeVisible()
+  await expect(page.getByRole('button', { name: '@grace' })).toBeVisible()
+  expect(calls).toEqual([])
+})
+
 test('with live sync off, the landing page leads with the free import', async ({ page }) => {
   await page.route('**/api/auth/me', (route) =>
     route.fulfill({ json: { authenticated: false, xConfigured: false, liveSyncEnabled: false, apiMode: 'live', dataRetentionDays: 90, user: null, connection: null, csrfToken: null } }),
@@ -73,12 +122,13 @@ test('with live sync off, the landing page leads with the free import', async ({
   await page.goto('/')
   await expect(page.getByText(/live x sync is off here/i)).toBeVisible()
   await expect(page.locator('#hero-handle')).toHaveCount(0)
-  await page.getByRole('link', { name: /import your saves — free/i }).first().click()
+  await page.getByRole('link', { name: /get my bookmark dna — free/i }).first().click()
   await expect(page).toHaveURL(/\/import$/)
+  await expect(page.getByRole('tab', { name: /copy from x/i })).toHaveAttribute('aria-selected', 'true')
 })
 
 test('import: malformed and empty files show clear errors and recover', async ({ page }) => {
-  await page.goto('/import')
+  await page.goto('/import?via=files')
   await page.locator('#import-files').setInputFiles([{ name: 'broken.json', mimeType: 'application/json', buffer: Buffer.from('{oops') }])
   await page.getByRole('button', { name: /read import/i }).click()
   await expect(page.getByRole('alert').filter({ hasText: 'broken.json' })).toContainText(/isn’t valid JSON/)
