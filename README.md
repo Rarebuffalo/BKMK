@@ -2,11 +2,12 @@
 
 > You saved it for a reason.
 
-BKMK.exe scans your X bookmarks through the official X API. It gives you a Bookmark DNA report (collector archetype, Curation Score and badges), a shareable scorecard, and a searchable, categorised library. Classification and scoring are rules-based, with no AI.
+BKMK.exe analyses what you save on X. It gives you a Bookmark DNA report (collector archetype, Curation Score and badges), a shareable scorecard, and a searchable, categorised library. Classification and scoring are rules-based, with no AI.
 
-There are two modes, and their data is never mixed:
+There are three modes, and their data is never mixed:
 
-- **Live:** sign in with X (OAuth 2.0 + PKCE). Scans read your real bookmarks and store them in Postgres.
+- **Import (default, free):** drop in your X archive's Likes or a bookmark list you already have. It's analysed in your browser: nothing is uploaded and no X API call is made. Tagged "IMPORTED". X's archive doesn't include bookmarks, so archive imports are Likes and say so. See [docs/zero-cost-mode.md](docs/zero-cost-mode.md).
+- **Live (optional, paid X API):** sign in with X (OAuth 2.0 + PKCE). Scans read real bookmarks through X's pay-per-use API and store them in Postgres. Off unless `LIVE_SYNC_ENABLED=true`.
 - **Demo:** fixed sample data that runs entirely in the browser. It's labelled "DEMO" everywhere and never touches the backend.
 
 ## Quick start (local)
@@ -31,9 +32,9 @@ npm install
 npm run dev                                     # http://localhost:5173
 ```
 
-With the default `X_API_MODE=fixture`, sign-in and scans use recorded X responses that follow the documented API shapes. You can click through the whole live flow, including cancelled, rate-limited and revoked cases, without credentials. Fixture mode is refused in production.
+Imports and the demo need only the frontend. For the live flow locally, set `LIVE_SYNC_ENABLED=true` in `backend/.env`. With `X_API_MODE=fixture`, sign-in and scans use recorded X responses that follow the documented API shapes. You can click through the whole live flow, including cancelled, rate-limited and revoked cases, without credentials. Fixture mode is refused in production.
 
-To use **real X accounts**, set `X_API_MODE=live`, `X_CLIENT_ID` and `X_CLIENT_SECRET` in `backend/.env`, and register `http://localhost:5173/api/auth/x/callback` in your X app. See [docs/deployment.md](docs/deployment.md#4-create-the-x-developer-app).
+To use **real X accounts** (billed by X per read), set `LIVE_SYNC_ENABLED=true`, `X_API_MODE=live`, `X_CLIENT_ID` and `X_CLIENT_SECRET` in `backend/.env`, and register `http://localhost:5173/api/auth/x/callback` in your X app. See [docs/deployment.md](docs/deployment.md#4-create-the-x-developer-app).
 
 ## Tests
 

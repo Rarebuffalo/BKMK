@@ -14,6 +14,7 @@ Every piece of state BKMK.exe keeps: where it lives, how long it lasts and what 
 | **OAuth state** | Cookie `bkmk_oauth_state`: `HttpOnly`, `Secure` in production, `SameSite=Lax`, `Path=/api/auth/x` | Binds the login to this browser | 10 min | The callback (success or failure), expiry |
 | **CSRF token** | JavaScript memory only (from `/api/auth/me`) | Low: useless without the cookie | The tab | Reload, sign out |
 | **Live report and library** | React memory (`LiveProvider`), fetched from the API | Yes (private bookmarks) | The tab | Reload, sign out. Never written to storage. |
+| **Imported library** (free mode) | `localStorage` key `bkmk.session.v2`, as the session's `result` | The user's own data, which never leaves the browser: the analysed Likes or bookmarks they chose to import | Until deleted | Settings → Delete, or clearing site data. The import file itself is held only in memory until analysis. |
 | **Demo session** | `localStorage` key `bkmk.session.v2` | No. Synthetic sample data and a typed demo handle (not looked up on X), plus the current mode, reveal-seen flag and demo-lab choices. | Until cleared | Settings → Delete (demo), Disconnect (demo), or clearing site data |
 
 `sessionStorage` isn't used.

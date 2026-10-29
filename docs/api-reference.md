@@ -31,7 +31,7 @@ The base path is `/api`. Bodies are JSON and keys are camelCase. Interactive Ope
 |---|---|
 | `GET /api/auth/x/start?handle=&returnTo=scan\|settings` | Starts OAuth 2.0 PKCE. Sets the state cookie and responds `303` to X's authorize URL. If X isn't configured, it redirects to `/connect?auth=failed&reason=not_configured`. |
 | `GET /api/auth/x/callback?state=&code=\|error=` | Validates the state (cookie plus single-use server record), exchanges the code, calls `/2/users/me`, upserts the user by stable X ID, stores encrypted tokens and creates the session. Redirects to `FRONTEND_URL` + `/scan?auth=success`, or `/connect?auth=success&requested=<typed handle>` on an account mismatch, or `/connect?auth=cancelled\|failed&reason=…`. |
-| `GET /api/auth/me` | `{authenticated, xConfigured, apiMode, dataRetentionDays, user?, connection?, csrfToken?}`. Never includes tokens. |
+| `GET /api/auth/me` | `{authenticated, xConfigured, liveSyncEnabled, apiMode, dataRetentionDays, user?, connection?, csrfToken?}`. `xConfigured` is true only when live sync is on and has credentials. Never includes tokens. |
 | `POST /api/auth/logout` | `204`. Ends this session and clears the cookie. The X grant and the stored library are kept for the next sign-in. |
 | `POST /api/auth/disconnect` | Revokes the tokens at X, then deletes all of the user's data. Returns `{"deleted": true, "revoked": bool}`. |
 
@@ -43,7 +43,7 @@ Every POST and DELETE needs the session's `X-CSRF-Token`. A request whose `Origi
 
 | Method and path | Purpose |
 |---|---|
-| `POST /api/scans` body `{"mode"?: "full"\|"refresh"}` | Returns `202` with a `Scan`. Runs in the background. If a scan is already active, that scan is returned. `409 not_connected`, `429 scan_cooldown`, `429 daily_budget` (the global `X_DAILY_BUDGET_USD` is spent; `retryAfter` is the number of seconds until midnight UTC). A scan that reaches the cap mid-way ends `partial` with `stopReason: "daily_budget"`. Without `mode`: `full` for the first scan, `refresh` after that. |
+| `POST /api/scans` body `{"mode"?: "full"\|"refresh"}` | Returns `202` with a `Scan`. Runs in the background. If a scan is already active, that scan is returned. `409 live_sync_disabled` (the server's `LIVE_SYNC_ENABLED` is off; no X call is made), `409 not_connected`, `429 scan_cooldown`, `429 daily_budget` (the global `X_DAILY_BUDGET_USD` is spent; `retryAfter` is the number of seconds until midnight UTC). A scan that reaches the cap mid-way ends `partial` with `stopReason: "daily_budget"`. Without `mode`: `full` for the first scan, `refresh` after that. |
 | `GET /api/scans/latest` | The most recent `Scan`, or `null` |
 | `GET /api/scans/{id}` | A `Scan` owned by the user. Poll it while the status is `queued` or `running`. |
 

@@ -22,10 +22,14 @@ services:
         sync: false # https://<your-app>.vercel.app — the only origin browsers use
       - key: X_REDIRECT_URI
         sync: false # https://<your-app>.vercel.app/api/auth/x/callback — must match the X app exactly
+      # Free by default: no X API calls, users import files in the browser.
+      # true = live bookmark sync through X's paid API (needs the X credentials below and credit).
+      - key: LIVE_SYNC_ENABLED
+        value: "false"
       - key: X_CLIENT_ID
-        sync: false
+        sync: false # only needed with LIVE_SYNC_ENABLED=true
       - key: X_CLIENT_SECRET
-        sync: false
+        sync: false # only needed with LIVE_SYNC_ENABLED=true
       - key: SESSION_SECRET
         generateValue: true
       - key: TOKEN_ENCRYPTION_KEY
