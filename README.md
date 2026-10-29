@@ -4,9 +4,10 @@
 
 BKMK.exe analyses what you save on X. It gives you a Bookmark DNA report (collector archetype, Curation Score and badges), a shareable scorecard, and a searchable, categorised library. Classification and scoring are rules-based, with no AI.
 
-There are three modes, and their data is never mixed:
+There are four ways in, and their data is never mixed:
 
-- **Import (default, free):** drop in your X archive's Likes or a bookmark list you already have. It's analysed in your browser: nothing is uploaded and no X API call is made. Tagged "IMPORTED". X's archive doesn't include bookmarks, so archive imports are Likes and say so. See [docs/zero-cost-mode.md](docs/zero-cost-mode.md).
+- **Copy from X (default, free, about a minute):** select all on your X bookmarks page, copy, and paste into BKMK.exe. It's parsed and analysed in your browser: no extension, no login, nothing uploaded, and BKMK.exe never contacts X. Tagged "IMPORTED". See [docs/instant-analysis.md](docs/instant-analysis.md) for why this, not an extension.
+- **Archive or file import (fallback, free):** X archive Likes (the archive has no bookmarks) or a bookmark list you already have. See [docs/zero-cost-mode.md](docs/zero-cost-mode.md).
 - **Live (optional, paid X API):** sign in with X (OAuth 2.0 + PKCE). Scans read real bookmarks through X's pay-per-use API and store them in Postgres. Off unless `LIVE_SYNC_ENABLED=true`.
 - **Demo:** fixed sample data that runs entirely in the browser. It's labelled "DEMO" everywhere and never touches the backend.
 

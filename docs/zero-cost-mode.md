@@ -1,5 +1,7 @@
 # Zero-cost mode
 
+> **Update (same day):** the primary path is now "Copy from X", a paste of the user's own bookmarks page. See [instant-analysis.md](instant-analysis.md). Archive and file import below is the fallback.
+
 Decided 2026-10-30. BKMK.exe now runs with **no ongoing X API cost** by default. Users import a file they can export themselves, and it is analysed in their browser. Live X sync still exists, but it is off unless the owner switches it on (`LIVE_SYNC_ENABLED=true`).
 
 ## What was costing money
