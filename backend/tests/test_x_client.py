@@ -135,7 +135,10 @@ def test_long_rate_limit_fails_fast_with_retry_after():
     assert e.value.code == "rate_limited" and e.value.retry_after > 800
 
 
-@pytest.mark.parametrize(("status", "code"), [(401, "auth_expired"), (403, "missing_permissions"), (404, "api_error")])
+@pytest.mark.parametrize(
+    ("status", "code"),
+    [(401, "auth_expired"), (402, "x_payment_required"), (403, "missing_permissions"), (404, "x_request_rejected")],
+)
 def test_error_normalisation_does_not_retry_permanent_errors(status, code):
     calls = []
 
@@ -170,3 +173,48 @@ def test_bookmarks_rejects_non_numeric_user_id_and_bad_data_shape():
     with pytest.raises(XApiError) as e:
         c.get_bookmarks_page("t", "123", max_results=10, pagination_token=None, expand_authors=False)
     assert e.value.code == "invalid_response"
+
+
+def test_payment_required_is_not_retried_and_logs_only_safe_problem_fields(caplog):
+    calls = []
+
+    def handler(req):
+        calls.append(req)
+        return httpx.Response(
+            402,
+            json={
+                "title": "Payment Required",
+                "detail": "credits depleted",
+                "type": "https://api.x.com/2/problems/credits-depleted",
+            },
+            headers={"x-transaction-id": "tx-123"},
+        )
+
+    with caplog.at_level("WARNING", logger="bkmk.x"), pytest.raises(XApiError) as e:
+        client_with(handler).get_bookmarks_page(
+            "secret-access-token", "42", max_results=10, pagination_token=None, expand_authors=False
+        )
+    assert e.value.code == "x_payment_required" and e.value.status == 402 and len(calls) == 1
+    assert "temporary" not in e.value.message.lower()
+    (rec,) = [r for r in caplog.records if r.getMessage() == "x api error"]
+    assert rec.status == 402 and rec.x_type.endswith("credits-depleted") and rec.x_transaction_id == "tx-123"
+    assert rec.path == "/2/users/42/bookmarks"
+    assert "secret-access-token" not in str(rec.__dict__)
+
+
+@pytest.mark.parametrize(
+    ("body", "code"),
+    [
+        (
+            {"type": "https://api.x.com/2/problems/client-forbidden", "reason": "client-not-enrolled"},
+            "x_access_restricted",
+        ),
+        ({"title": "Forbidden", "detail": "missing scope"}, "missing_permissions"),
+    ],
+)
+def test_forbidden_distinguishes_app_access_level_from_permissions(body, code):
+    with pytest.raises(XApiError) as e:
+        client_with(lambda req: httpx.Response(403, json=body)).get_bookmarks_page(
+            "t", "42", max_results=10, pagination_token=None, expand_authors=False
+        )
+    assert e.value.code == code

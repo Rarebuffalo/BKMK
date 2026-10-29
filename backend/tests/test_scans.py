@@ -212,3 +212,21 @@ def test_rotated_encryption_key_asks_for_reconnect_instead_of_crashing(client, d
     assert client.get("/api/auth/me").json()["connection"]["status"] == "expired"
     csrf = login(client)  # reconnecting stores tokens under the new key
     assert scan(client, csrf)["status"] == "completed"
+
+
+def test_x_payment_required_fails_the_scan_once_with_an_actionable_error(client, db):
+    csrf = login(client, "credits")
+    s = scan(client, csrf)
+    assert s["status"] == "failed" and s["errorCode"] == "x_payment_required"
+    assert "credit" in s["errorMessage"] and "temporary" not in s["errorMessage"].lower()
+    assert s["apiRequests"] == 0 and s["retrieved"] == 0 and count(db, Bookmark) == 0
+    # The polling endpoint reports the same persisted failure.
+    polled = client.get(f"/api/scans/{s['id']}").json()
+    assert polled["status"] == "failed" and polled["errorCode"] == "x_payment_required"
+    assert client.get("/api/scans/latest").json()["errorCode"] == "x_payment_required"
+
+
+def test_x_server_error_fails_the_scan_as_temporary(client):
+    csrf = login(client, "servererror")
+    s = scan(client, csrf)
+    assert s["status"] == "failed" and s["errorCode"] == "api_error" and "server error" in s["errorMessage"]

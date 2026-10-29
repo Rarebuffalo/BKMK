@@ -148,6 +148,9 @@ def callback(
             return fail("not_invited")
     except XApiError as exc:
         log.warning("oauth exchange failed", extra={"code": exc.code, "status": exc.status})
+        # Billing and access-level refusals are the app owner's to fix: say so, not "try again".
+        if exc.code in ("x_payment_required", "x_access_restricted"):
+            return fail(exc.code)
         return fail("exchange_failed")
     finally:
         client.close()
@@ -187,6 +190,7 @@ def fixture_authorize(state: str = Query(max_length=128), settings: Settings = D
         ("empty", "Approve — empty account"),
         ("ratelimit", "Approve — rate-limited"),
         ("revoked", "Approve — token revoked"),
+        ("credits", "Approve — X API credit used up"),
     ]
     links = "".join(
         f'<p><a data-scenario="{k}" href="/api/auth/x/callback?state={s}&amp;code=fixture-code-{k}">{label}</a></p>'

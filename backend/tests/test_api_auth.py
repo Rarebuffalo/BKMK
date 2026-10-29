@@ -227,3 +227,18 @@ def test_oversized_requests_are_refused(client):
 def test_security_headers_and_no_store(client):
     r = client.get("/api/auth/me")
     assert r.headers["x-content-type-options"] == "nosniff" and r.headers["cache-control"] == "no-store"
+
+
+def test_sign_in_refused_for_billing_reports_the_owner_side_reason(client, db, monkeypatch):
+    from app.integrations.x_client import XApiError, XClient
+
+    def no_credit(self, *a, **k):
+        raise XApiError("x_payment_required", "credit used up", status=402)
+
+    monkeypatch.setattr(XClient, "get_me", no_credit)
+    _, state = _start(client)
+    r = client.get(
+        "/api/auth/x/callback", params={"state": state, "code": "fixture-code-normal"}, follow_redirects=False
+    )
+    assert r.status_code == 303 and "reason=x_payment_required" in r.headers["location"]
+    assert db.scalar(select(User)) is None

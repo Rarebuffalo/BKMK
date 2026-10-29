@@ -316,24 +316,64 @@ class XClient:
         return body
 
     @staticmethod
-    def _error_for(resp: httpx.Response) -> XApiError:
+    def _problem(resp: httpx.Response) -> dict[str, str]:
+        """X's RFC 7807-style problem fields, trimmed. They describe the failure and
+        carry no tokens or post content, so they are safe to log."""
+        try:
+            body = resp.json()
+        except ValueError:
+            body = None
+        out: dict[str, str] = {}
+        if isinstance(body, dict):
+            for key in ("type", "title", "detail", "error"):
+                if isinstance(body.get(key), str):
+                    out[key] = body[key][:160]
+            errors = body.get("errors")
+            if "type" not in out and isinstance(errors, list) and errors and isinstance(errors[0], dict):
+                for key in ("type", "title", "detail"):
+                    if isinstance(errors[0].get(key), str):
+                        out[key] = errors[0][key][:160]
+        if tx := resp.headers.get("x-transaction-id"):
+            out["transaction_id"] = tx[:64]
+        return out
+
+    @classmethod
+    def _error_for(cls, resp: httpx.Response) -> XApiError:
         status = resp.status_code
+        problem = cls._problem(resp)
+        # Status, X's problem type and transaction id: enough to diagnose or quote to X support.
+        log.warning(
+            "x api error",
+            extra={"status": status, "path": resp.request.url.path, **{f"x_{k}": v for k, v in problem.items()}},
+        )
+        kind = problem.get("type", "").rsplit("/", 1)[-1]
         if status == 401:
             return XApiError("auth_expired", "Your X authorization expired or was revoked.", status=status)
+        if status == 402:
+            # Pay-per-use billing: the developer account behind this app has no usable
+            # credit (X's problem type is usually "credits-depleted"). Not the user's
+            # fault, not temporary, and retrying only repeats the refusal.
+            return XApiError(
+                "x_payment_required",
+                "X refused the request because BKMK.exe's X API credit has run out. "
+                "Scanning is paused until the app owner adds credit.",
+                status=status,
+            )
         if status == 403:
+            if kind in ("client-forbidden", "client-not-enrolled"):
+                return XApiError(
+                    "x_access_restricted",
+                    "X says this app's API access level doesn't include bookmarks. The app owner needs to fix this.",
+                    status=status,
+                )
             return XApiError(
                 "missing_permissions", "X refused access. The app may lack bookmark permissions.", status=status
             )
         if status == 400:
             # OAuth token endpoint returns 400 with error=invalid_grant for bad/expired codes.
-            try:
-                if resp.json().get("error") == "invalid_grant":
-                    return XApiError(
-                        "invalid_grant", "The authorization code or token is no longer valid.", status=status
-                    )
-            except ValueError:
-                pass
+            if problem.get("error") == "invalid_grant":
+                return XApiError("invalid_grant", "The authorization code or token is no longer valid.", status=status)
             return XApiError("invalid_request", "X rejected the request.", status=status)
         if status >= 500:
             return XApiError("api_error", f"X returned a server error (HTTP {status}).", status=status)
-        return XApiError("api_error", f"X returned an unexpected error (HTTP {status}).", status=status)
+        return XApiError("x_request_rejected", f"X rejected the request (HTTP {status}).", status=status)

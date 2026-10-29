@@ -2,7 +2,7 @@
 
 Responses follow the documented v2 shapes. The scenario is carried in the
 fixture token (``fixture-token-<scenario>``) so one process can serve
-several behaviours: normal | empty | ratelimit | revoked | servererror | other.
+several behaviours: normal | empty | ratelimit | revoked | servererror | credits | other.
 All posts are synthetic and authored by fictional accounts.
 """
 
@@ -131,6 +131,18 @@ def handler(request: httpx.Request) -> httpx.Response:
             return _json(403, {"title": "Forbidden", "status": 403})
         if scenario == "servererror":
             return _json(503, {"title": "Service Unavailable", "status": 503})
+        if scenario == "credits":
+            # The shape developers report from X when pay-per-use credit runs out.
+            return _json(
+                402,
+                {
+                    "title": "Payment Required",
+                    "detail": "credits depleted",
+                    "type": "https://api.x.com/2/problems/credits-depleted",
+                    "status": 402,
+                },
+                {"x-transaction-id": "fixture-tx-402"},
+            )
         posts = [] if scenario == "empty" else fixture_posts()
         size = int(request.url.params.get("max_results", "100"))
         start = int(request.url.params.get("pagination_token", "0") or 0)
