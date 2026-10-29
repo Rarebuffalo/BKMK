@@ -49,7 +49,10 @@ No X credentials were available while building this. **No request to the live X 
    - A 429 is retried after `x-rate-limit-reset` only if the wait is ≤ `X_MAX_RATE_LIMIT_WAIT_SECONDS` (default 20). Otherwise the scan ends as `partial` and keeps what it has.
    - 5xx and network errors get bounded exponential backoff with jitter (3 attempts).
    - 401 triggers one refresh-token attempt, then `auth_expired`.
-   - 403 means `missing_permissions`. Other 4xx errors are permanent and aren't retried.
+   - 402 means `x_payment_required`: the developer account has no usable pay-per-use credit (problem type `credits-depleted`).
+   - 403 `client-forbidden` / `client-not-enrolled` means `x_access_restricted`. Any other 403 means `missing_permissions`.
+   - Other 4xx errors become `x_request_rejected`. All 4xx errors are permanent and aren't retried.
+   - Every X error is logged as `"x api error"` with `status`, `path`, `x_type`, `x_title`, `x_detail` and `x_transaction_id`, and never the token. Quote the transaction ID to X support.
 6. **Deletion sync.** After a **complete** scan (no next token and under the cap), stored bookmarks that X no longer returned are deleted: they were unbookmarked, deleted or made private. Capped or partial scans can't tell, so they delete nothing. Only "last seen" timestamps are kept for that case.
 
 ## Limited by the API

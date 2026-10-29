@@ -66,8 +66,14 @@ calculating_stats, evaluating_achievements, achievement_unlocked {id}, scan_comp
 Error codes:
 
 ```text
-auth_expired, missing_permissions, rate_limited, api_error, network, invalid_response, database_error, internal_error, interrupted
+auth_expired, missing_permissions, rate_limited, api_error, network, invalid_response, database_error, internal_error, interrupted,
+x_payment_required, x_access_restricted, x_request_rejected, invalid_request
 ```
+
+- `x_payment_required`: X answered 402 because the app's pay-per-use credit is used up.
+- `x_access_restricted`: X answered 403 `client-forbidden`; the app's access level lacks the endpoint.
+
+Both need the app owner to act. The UI doesn't offer a retry, and the backend never retries them.
 
 ## Dashboard and library
 
