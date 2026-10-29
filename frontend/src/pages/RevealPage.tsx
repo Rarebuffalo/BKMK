@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { BadgeDetailModal } from '../components/achievements/BadgeDetailModal'
 import { Avatar } from '../components/brand/Avatar'
-import { DemoTag, LiveTag } from '../components/brand/Demo'
+import { SourceTag } from '../components/brand/Demo'
 import { ArchetypeEmblem, DnaStrip, Wordmark } from '../components/brand/Pixel'
 import { ArchetypeWhy, CoverageLine, FeaturedBadges, ScoreCard, ScrambleText, TopInterests } from '../components/reveal/ReportParts'
 import { Button } from '../components/ui/Button'
@@ -63,7 +63,7 @@ export function RevealPage() {
                   <div className="text-paper">@{result.handle}</div>
                   <div className="text-xs text-paper-faint">Bookmark DNA · report {result.scannedAt.slice(0, 10)}</div>
                 </div>
-                {result.isDemo ? <DemoTag /> : <LiveTag />}
+                <SourceTag result={result} />
               </div>
 
               <div className={cx('mt-8 flex flex-col items-start gap-5 sm:flex-row sm:gap-7', instant ? '' : 'animate-pop')} style={beat(2)}>

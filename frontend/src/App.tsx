@@ -3,6 +3,7 @@ import { AppShell } from './components/dashboard/AppShell'
 import { ToastProvider } from './components/ui/Toast'
 import { AchievementsPage } from './pages/AchievementsPage'
 import { ConnectPage } from './pages/ConnectPage'
+import { ImportPage } from './pages/ImportPage'
 import { LandingPage } from './pages/LandingPage'
 import { LibraryPage } from './pages/LibraryPage'
 import { NotFoundPage } from './pages/NotFoundPage'
@@ -20,7 +21,7 @@ import { SessionProvider, useSession } from './state/session'
 function RequireResult() {
   const { state } = useSession()
   const live = useLive()
-  if (state.mode === 'demo') return state.result ? <Outlet /> : <Navigate to="/" replace />
+  if (state.mode !== 'live') return state.result ? <Outlet /> : <Navigate to="/" replace />
   if (live.report) return <Outlet />
   if (live.status === 'checking' || live.reportState === 'loading' || (live.status === 'authenticated' && live.reportState === 'idle')) {
     return (
@@ -60,6 +61,7 @@ const router = createBrowserRouter([
     children: [
       { path: '/', element: <LandingPage /> },
       { path: '/connect', element: <ConnectPage /> },
+      { path: '/import', element: <ImportPage /> },
       { path: '/scan', element: <ScanPage /> },
       {
         element: <RequireResult />,

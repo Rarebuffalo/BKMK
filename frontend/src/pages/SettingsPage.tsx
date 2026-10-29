@@ -1,7 +1,7 @@
 import { Download, LogOut, RefreshCw, Trash2, Unplug } from 'lucide-react'
 import { useState } from 'react'
 import { Avatar } from '../components/brand/Avatar'
-import { DemoLabControls, DemoTag } from '../components/brand/Demo'
+import { DemoLabControls, resultSource, SourceTag } from '../components/brand/Demo'
 import { PageHeader } from '../components/dashboard/PageHeader'
 import { Button } from '../components/ui/Button'
 import { ConfirmDialog } from '../components/ui/Modal'
@@ -20,6 +20,8 @@ export function SettingsPage() {
   const [confirm, setConfirm] = useState<'disconnect' | 'delete' | null>(null)
   // Data can disappear mid-render after delete/disconnect, before navigation lands.
   if (!result) return null
+  const source = resultSource(result)
+  const imported = source === 'import'
 
   return (
     <>
@@ -32,26 +34,30 @@ export function SettingsPage() {
               <Avatar handle={result.handle} size={44} />
               <div>
                 <div className="flex items-center gap-2 font-mono">
-                  @{result.handle} {result.isDemo && <DemoTag />}
+                  @{result.handle} <SourceTag result={result} />
                 </div>
                 <div className="text-xs text-paper-faint">
                   {result.isDemo
                     ? 'Demo session · no X token is stored'
-                    : connection === 'active'
+                    : imported
+                      ? 'Imported file · analysed on this device, nothing uploaded, no X account connected'
+                      : connection === 'active'
                       ? 'Connected via X OAuth 2.0 · read-only scopes'
                       : 'X authorization expired — reconnect to scan again'}
                 </div>
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
-              {!result.isDemo && (
+              {source === 'live' && (
                 <Button variant="secondary" icon={<LogOut size={14} />} onClick={() => actions.signOut()}>
                   Sign out
                 </Button>
               )}
-              <Button variant="ghost" className="text-danger hover:text-danger" icon={<Unplug size={14} />} onClick={() => setConfirm('disconnect')}>
-                Disconnect
-              </Button>
+              {!imported && (
+                <Button variant="ghost" className="text-danger hover:text-danger" icon={<Unplug size={14} />} onClick={() => setConfirm('disconnect')}>
+                  Disconnect
+                </Button>
+              )}
             </div>
           </div>
         </Card>
@@ -64,11 +70,13 @@ export function SettingsPage() {
                 Last scanned {relativeTime(result.scannedAt)} <span className="text-paper-faint">({new Date(result.scannedAt).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })})</span>
               </div>
               <div className="mt-0.5 text-paper-faint">
-                {result.coverage === 'complete' ? 'Complete' : 'Partial'} · {result.stats.accessible} readable bookmarks. Rescans only add new posts — badges aren’t awarded twice.
+                {imported
+                  ? `${result.stats.accessible} imported ${result.importInfo?.kind === 'likes' ? 'likes' : 'posts'}. Import a newer file any time; badges you’ve earned are kept.`
+                  : `${result.coverage === 'complete' ? 'Complete' : 'Partial'} · ${result.stats.accessible} readable bookmarks. Rescans only add new posts — badges aren’t awarded twice.`}
               </div>
             </div>
             <Button icon={<RefreshCw size={14} />} onClick={() => actions.rescan(result.handle)}>
-              Rescan now
+              {imported ? 'Import again' : 'Rescan now'}
             </Button>
           </div>
         </Card>
@@ -79,7 +87,7 @@ export function SettingsPage() {
             <Row title="Export" body="Download every scanned bookmark with its topic and type as JSON." action={<Button icon={<Download size={14} />} onClick={() => actions.exportData(result)}>Export JSON</Button>} />
             <Row
               title="Delete data"
-              body={result.isDemo ? 'Erase the demo session and everything stored in this browser.' : 'Permanently delete your bookmarks, scores and badges from BKMK.exe.'}
+              body={result.isDemo ? 'Erase the demo session and everything stored in this browser.' : imported ? 'Erase the imported library, score and badges from this browser.' : 'Permanently delete your bookmarks, scores and badges from BKMK.exe.'}
               action={<Button variant="danger" icon={<Trash2 size={14} />} onClick={() => setConfirm('delete')}>Delete</Button>}
             />
           </div>
@@ -88,12 +96,22 @@ export function SettingsPage() {
         <Card className="p-5">
           <CardHeader eyebrow="How your data is handled" />
           <ul className="mt-3 space-y-2 text-sm text-paper-dim">
-            <li>• Access is granted through X’s official OAuth. We never see or store your password.</li>
-            <li>• We only request read access to bookmarks and your profile.</li>
+            {source === 'live' && (
+              <>
+                <li>• Access is granted through X’s official OAuth. We never see or store your password.</li>
+                <li>• We only request read access to bookmarks and your profile.</li>
+              </>
+            )}
             <li>• Your library is private. Share cards include totals, archetype and badges — never bookmark text, authors or links.</li>
-            {!result.isDemo && <li>• Signing out ends this browser session. Your library stays saved, so it’s there when you sign in again.</li>}
-            <li>• Disconnecting revokes our token and deletes stored bookmarks.</li>
-            {!result.isDemo && retentionDays > 0 && (
+            {imported && (
+              <>
+                <li>• Your file was read in this browser. Nothing was uploaded, and no X API call was made, so importing is free.</li>
+                <li>• The analysed library is saved in this browser’s local storage so it survives a reload. Delete removes it.</li>
+              </>
+            )}
+            {source === 'live' && <li>• Signing out ends this browser session. Your library stays saved, so it’s there when you sign in again.</li>}
+            {source === 'live' && <li>• Disconnecting revokes our token and deletes stored bookmarks.</li>}
+            {source === 'live' && retentionDays > 0 && (
               <li>• If you don’t sign in or scan for {retentionDays} days, we revoke access and delete your stored data automatically.</li>
             )}
             <li>• Classification and scoring are rule-based. No bookmark is sent to an AI model.</li>

@@ -1,6 +1,7 @@
 import { FlaskConical } from 'lucide-react'
 import { useState } from 'react'
 import { PERSONAS, type DemoPersona } from '../../data/demoProfile'
+import type { ScanResult } from '../../domain/types'
 import { cx } from '../../lib/cx'
 import type { DemoScenario } from '../../services'
 import { useSession } from '../../state/session'
@@ -21,6 +22,26 @@ export function LiveTag({ className }: { className?: string }) {
       LIVE
     </span>
   )
+}
+
+export function ImportTag({ className }: { className?: string }) {
+  return (
+    <span className={cx('inline-flex items-center gap-1 rounded-xs border border-violet/50 px-1.5 py-px font-pixel text-[10px] text-violet', className)} title="Your own file, analysed on this device">
+      IMPORTED
+    </span>
+  )
+}
+
+/** DEMO, IMPORTED or LIVE: every result says where its data came from. */
+export function SourceTag({ result, className }: { result: Pick<ScanResult, 'isDemo' | 'source'>; className?: string }) {
+  const source = resultSource(result)
+  if (source === 'demo') return <DemoTag className={className} />
+  if (source === 'import') return <ImportTag className={className} />
+  return <LiveTag className={className} />
+}
+
+export function resultSource(result: Pick<ScanResult, 'isDemo' | 'source'>) {
+  return result.source ?? (result.isDemo ? 'demo' : 'live')
 }
 
 export function DemoBanner() {

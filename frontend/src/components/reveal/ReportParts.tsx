@@ -195,11 +195,19 @@ export function CoverageLine({ result, className }: { result: ScanResult; classN
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-xs text-paper-faint">
         <span className={cx('flex items-center gap-1.5', result.coverage === 'complete' ? 'text-phosphor' : 'text-amber')}>
           <span className="size-1.5 bg-current" />
-          {result.coverage === 'complete' ? 'Scan complete' : 'Partial scan'}
+          {result.source === 'import'
+            ? result.coverage === 'complete'
+              ? 'Import analysed'
+              : 'Import · newest only'
+            : result.coverage === 'complete'
+              ? 'Scan complete'
+              : 'Partial scan'}
         </span>
         <span>{fmt(s.accessible)} readable</span>
         {s.inaccessible > 0 && <span>{fmt(s.inaccessible)} deleted/protected skipped</span>}
-        <span>scanned {relativeTime(result.scannedAt)}</span>
+        <span>
+          {result.source === 'import' ? 'analysed' : 'scanned'} {relativeTime(result.scannedAt)}
+        </span>
       </div>
       {result.coverageNote && (
         <div className="flex gap-2 rounded-sm border border-amber/40 bg-amber/5 p-2.5 text-xs text-amber">

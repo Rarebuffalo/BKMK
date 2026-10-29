@@ -1,7 +1,7 @@
 import { ArrowRight, Clock, KeyRound, RotateCcw, Square } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
-import { DemoLab, DemoTag, LiveTag } from '../components/brand/Demo'
+import { DemoLab, DemoTag, ImportTag, LiveTag } from '../components/brand/Demo'
 import { AchievementBadge, RARITY_COLOR } from '../components/brand/Pixel'
 import { FlowLayout, Window } from '../components/scan/Window'
 import { Button, Spinner } from '../components/ui/Button'
@@ -72,7 +72,7 @@ export function ScanPage() {
 
   useEffect(() => {
     if (!ready || !handle) return
-    const identity = { handle, displayName: handle, isDemo: mode === 'demo' }
+    const identity = { handle, displayName: state.identity?.displayName ?? handle, isDemo: mode === 'demo' }
     const persona = state.demo.persona === 'auto' ? undefined : state.demo.persona
     const cancel = scanServices[mode].start({ identity, scenario: state.demo.scenario, persona, mode: scanMode }, (e) => {
       setView((v) => {
@@ -138,7 +138,7 @@ export function ScanPage() {
 
   return (
     <FlowLayout step={done && !empty ? 4 : 3}>
-      <Window title={`scanning @${shownHandle}`} status={mode === 'demo' ? <DemoTag /> : <LiveTag />}>
+      <Window title={mode === 'import' ? 'analysing your import' : `scanning @${shownHandle}`} status={mode === 'demo' ? <DemoTag /> : mode === 'import' ? <ImportTag /> : <LiveTag />}>
         {view.error ? (
           <div className="p-5 sm:p-8">
             <ScanError code={view.error.code} message={view.error.message} retrieved={view.retrieved} onRetry={retry} handle={shownHandle} live={mode === 'live'} />
@@ -263,7 +263,9 @@ export function ScanPage() {
       <p className="mt-5 text-center font-mono text-[11px] text-paper-faint">
         {mode === 'demo'
           ? 'Demo scan · simulated timing and synthetic bookmarks. Nothing is read from X.'
-          : 'Live scan · counts come from X API pages as they arrive. X has no total up front, so there’s no percentage.'}
+          : mode === 'import'
+            ? 'Import · your file is analysed in this browser. Nothing is uploaded and no X API call is made.'
+            : 'Live scan · counts come from X API pages as they arrive. X has no total up front, so there’s no percentage.'}
       </p>
       {mode === 'demo' && <DemoLab />}
     </FlowLayout>
@@ -323,6 +325,16 @@ function ScanError({ code, message, retrieved, onRetry, handle, live }: { code: 
         title="Today’s scanning budget is used up"
         body={<>{message} BKMK.exe caps how much of X’s paid API it uses per day. Your last report is still available.</>}
         action={<Button variant="primary" onClick={() => navigate('/app')}>Open my dashboard</Button>}
+      />
+    )
+  }
+  if (code === 'import-missing' || code === 'import-empty') {
+    return (
+      <ErrorState
+        code={code === 'import-empty' ? 'IMPORT_EMPTY' : 'IMPORT_MISSING'}
+        title={code === 'import-empty' ? 'Nothing to analyse' : 'Your import isn’t loaded'}
+        body={<>{message} Imports stay in memory until analysed, so a reload clears them.</>}
+        action={<Button variant="primary" onClick={() => navigate('/import')}>Choose a file</Button>}
       />
     )
   }

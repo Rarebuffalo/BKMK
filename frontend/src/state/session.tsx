@@ -8,10 +8,11 @@ import { useLive } from './live'
 //   anonymous → identified → authorized → (scanning) → scanned
 // UI components read this; services never touch it directly.
 
-export type AppMode = 'demo' | 'live'
+/** demo: synthetic sample · import: the user's own file, analysed locally · live: X API via the backend. */
+export type AppMode = 'demo' | 'import' | 'live'
 
 export interface SessionState {
-  /** Which data the dashboard shows. Demo data is never sent to or mixed with live data. */
+  /** Which data the dashboard shows. Demo, import and live data are never mixed. */
   mode: AppMode
   identity: AccountIdentity | null
   authorized: boolean

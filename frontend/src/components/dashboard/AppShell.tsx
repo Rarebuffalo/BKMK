@@ -8,7 +8,7 @@ import { relativeTime } from '../../lib/format'
 import { useAccountActions } from '../../state/actions'
 import { useResult } from '../../state/session'
 import { Avatar } from '../brand/Avatar'
-import { DemoBanner, DemoTag, LiveTag } from '../brand/Demo'
+import { DemoBanner, resultSource, SourceTag } from '../brand/Demo'
 import { Wordmark } from '../brand/Pixel'
 import { Button } from '../ui/Button'
 import { ConfirmDialog, Modal } from '../ui/Modal'
@@ -149,9 +149,9 @@ function AccountBox() {
       <div className="mt-3 flex items-center justify-between font-mono text-[10px] text-paper-faint">
         <span className="flex items-center gap-1.5">
           <span className={cx('size-1.5', result.coverage === 'complete' ? 'bg-phosphor' : 'bg-amber')} />
-          {result.isDemo ? 'Demo session' : 'Connected'}
+          {result.isDemo ? 'Demo session' : resultSource(result) === 'import' ? 'Imported · this device' : 'Connected'}
         </span>
-        {result.isDemo ? <DemoTag /> : <LiveTag />}
+        <SourceTag result={result} />
       </div>
     </div>
   )

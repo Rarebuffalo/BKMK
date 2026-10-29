@@ -25,6 +25,71 @@ async function liveSignIn(page: Page, consent: RegExp, handle = 'bkmk_fixture') 
   await page.getByRole('link', { name: consent }).click()
 }
 
+// ── import journeys (free, local, no X API) ────────────────────────────────
+
+const LIKES = [
+  ['1650000000000000001', 'Building LLM agents: an evaluation harness for RAG pipelines https://github.com/example/evals'],
+  ['1650000000000000002', 'Postgres indexing deep dive — why your btree is slow https://t.co/abc'],
+  ['1650000000000000003', 'Figma design system tokens, typography and color scales'],
+  ['1650000000000000004', 'Startup fundraising: what a seed round actually looks like'],
+]
+const likeJs = `window.YTD.like.part0 = ${JSON.stringify(LIKES.map(([id, text]) => ({ like: { tweetId: id, fullText: text, expandedUrl: `https://twitter.com/i/web/status/${id}` } })))}`
+
+test('import archive likes → local analysis → reveal → library, with no X API calls', async ({ page }) => {
+  const apiCalls: string[] = []
+  page.on('request', (r) => {
+    const url = r.url()
+    if (url.includes('/api/scans') || url.includes('/api/auth/x') || url.includes('api.x.com')) apiCalls.push(url)
+  })
+  await page.goto('/import')
+  await expect(page.getByRole('heading', { name: /analyse your saves for free/i })).toBeVisible()
+  await page.locator('#import-files').setInputFiles([
+    { name: 'like.js', mimeType: 'text/javascript', buffer: Buffer.from(likeJs) },
+    { name: 'list.txt', mimeType: 'text/plain', buffer: Buffer.from(`https://x.com/ada/status/${LIKES[0][0]}\nhttps://example.com/not-a-post`) },
+  ])
+  await page.getByRole('button', { name: /read 2 files/i }).click()
+  await expect(page.getByText(/found 4/i)).toBeVisible()
+  await expect(page.getByText(/1 duplicates merged · 1 non-post entries skipped/)).toBeVisible()
+  await page.locator('#import-handle').fill('ada_builds')
+  await page.getByRole('button', { name: /analyse 4 posts/i }).click()
+  await expect(page).toHaveURL(/\/scan$/)
+  await expect(page.getByText('IMPORTED').first()).toBeVisible()
+  await expect(page).toHaveURL(/\/reveal$/, { timeout: 20_000 })
+  await page.getByRole('button', { name: /skip/i }).click().catch(() => {})
+  await expect(page.getByText(/import analysed/i).first()).toBeVisible()
+
+  await page.goto('/app/library')
+  await page.getByLabel('Search bookmarks').pressSequentially('postgres', { delay: 30 })
+  await expect(page.getByText(/btree is slow/)).toBeVisible()
+  await page.goto('/app/settings')
+  await expect(page.getByText(/nothing was uploaded, and no x api call was made/i)).toBeVisible()
+  expect(apiCalls).toEqual([])
+})
+
+test('with live sync off, the landing page leads with the free import', async ({ page }) => {
+  await page.route('**/api/auth/me', (route) =>
+    route.fulfill({ json: { authenticated: false, xConfigured: false, liveSyncEnabled: false, apiMode: 'live', dataRetentionDays: 90, user: null, connection: null, csrfToken: null } }),
+  )
+  await page.goto('/')
+  await expect(page.getByText(/live x sync is off here/i)).toBeVisible()
+  await expect(page.locator('#hero-handle')).toHaveCount(0)
+  await page.getByRole('link', { name: /import your saves — free/i }).first().click()
+  await expect(page).toHaveURL(/\/import$/)
+})
+
+test('import: malformed and empty files show clear errors and recover', async ({ page }) => {
+  await page.goto('/import')
+  await page.locator('#import-files').setInputFiles([{ name: 'broken.json', mimeType: 'application/json', buffer: Buffer.from('{oops') }])
+  await page.getByRole('button', { name: /read import/i }).click()
+  await expect(page.getByRole('alert').filter({ hasText: 'broken.json' })).toContainText(/isn’t valid JSON/)
+  await expect(page.getByText(/no x posts found/i)).toBeVisible()
+  await page.getByRole('button', { name: /start over/i }).click()
+  await page.getByPlaceholder(/x\.com\/someone\/status/).fill(`https://x.com/ada/status/${LIKES[1][0]}`)
+  await page.getByRole('button', { name: /read import/i }).click()
+  await expect(page.getByText(/found 1/i)).toBeVisible()
+  await expect(page.getByText(/no post text in this import/i)).toBeVisible()
+})
+
 // ── demo journeys ──────────────────────────────────────────────────────────
 
 test('1–2 landing → demo scan → Bookmark DNA reveal', async ({ page }) => {

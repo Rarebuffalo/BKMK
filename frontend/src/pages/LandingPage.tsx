@@ -1,4 +1,4 @@
-import { ArrowRight, EyeOff, KeyRound, Search, ShieldCheck, Trash2 } from 'lucide-react'
+import { ArrowRight, EyeOff, FileUp, KeyRound, Search, ShieldCheck, Trash2 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { AchievementBadge, ArchetypeEmblem, DnaStrip, RARITY_COLOR, Wordmark } from '../components/brand/Pixel'
@@ -23,7 +23,7 @@ export function LandingPage() {
   // Live sign-in only when a backend with X credentials (or test fixtures) is reachable.
   const liveAvailable = live.status !== 'unavailable' && live.status !== 'checking' && !!live.me?.xConfigured
   const formMode = liveAvailable ? 'live' : 'demo'
-  const hasArchive = live.report ? 'live' : state.result ? 'demo' : null
+  const hasArchive = live.report ? 'live' : state.result ? (state.result.source === 'import' ? 'import' : 'demo') : null
   const [typed, setTyped] = useState('')
   const sample = sampleResult()
   const cardData = useMemo(() => cardDataFrom(sample, typed || 'yourhandle'), [sample, typed])
@@ -60,13 +60,31 @@ export function LandingPage() {
             for a <span className="text-phosphor">reason.</span>
           </h1>
           <p className="mt-6 max-w-lg text-lg text-paper-dim">
-            Scan your X bookmarks. Find out what kind of collector you are, unlock badges, and finally search the things you saved.
+            {liveAvailable
+              ? 'Scan your X bookmarks. Find out what kind of collector you are, unlock badges, and finally search the things you saved.'
+              : 'Import your X archive’s Likes or a bookmark list. Find out what kind of collector you are, unlock badges, and search what you saved. Free, and nothing leaves your browser.'}
           </p>
           <div className="mt-8 max-w-xl">
-            <UsernameForm id="hero-handle" onChange={setTyped} mode={formMode} />
+            {liveAvailable ? (
+              <UsernameForm id="hero-handle" onChange={setTyped} mode={formMode} />
+            ) : (
+              <ButtonLink to="/import" variant="primary" size="lg" icon={<FileUp size={16} />}>
+                Import your saves — free
+              </ButtonLink>
+            )}
           </div>
-          <p className="mt-1 font-mono text-xs text-paper-faint">
-            {liveAvailable ? 'Want a look first? ' : live.status === 'checking' ? '' : 'Live X scanning isn’t enabled on this server — scans use sample data. '}
+          <p className="mt-3 font-mono text-xs text-paper-faint">
+            {liveAvailable ? (
+              <>
+                Rather not connect?{' '}
+                <Link to="/import" className="text-paper-dim underline decoration-dotted underline-offset-4 hover:text-phosphor">
+                  Import a file instead (free)
+                </Link>
+                {' · '}
+              </>
+            ) : live.status === 'checking' ? null : (
+              'Live X sync is off here: X charges per bookmark read. '
+            )}
             <Link to="/connect" state={{ handle: 'demo', mode: 'demo' }} className="text-paper-dim underline decoration-dotted underline-offset-4 hover:text-phosphor">
               Try the demo profile (sample data) →
             </Link>
@@ -107,11 +125,18 @@ export function LandingPage() {
       <section id="how" className="mx-auto max-w-6xl scroll-mt-8 px-4 py-20 sm:px-6">
         <SectionHead eyebrow="HOW IT WORKS" title="Three steps. About a minute." />
         <ol className="mt-10 grid gap-4 md:grid-cols-3">
-          {[
-            { n: '01', t: 'Connect', d: 'Enter your handle, confirm it’s you, and approve read-only bookmark access on X.', icon: <KeyRound size={18} /> },
-            { n: '02', t: 'Scan', d: 'We index what X lets apps read — your 800 most recent bookmarks — sorting topics, threads, repos and papers with real progress.', icon: <Search size={18} /> },
+          {(liveAvailable
+            ? [
+                { n: '01', t: 'Connect', d: 'Enter your handle, confirm it’s you, and approve read-only bookmark access on X.', icon: <KeyRound size={18} /> },
+                { n: '02', t: 'Scan', d: 'We index what X lets apps read — your 800 most recent bookmarks — sorting topics, threads, repos and papers with real progress.', icon: <Search size={18} /> },
+              ]
+            : [
+                { n: '01', t: 'Import', d: 'Request your X archive and drop in its Likes, or use a bookmark list you already have. It’s read in your browser.', icon: <FileUp size={18} /> },
+                { n: '02', t: 'Analyse', d: 'Every post is sorted into topics and resource types by transparent rules, with real progress. No AI, no upload.', icon: <Search size={18} /> },
+              ]
+          ).concat([
             { n: '03', t: 'Reveal', d: 'Get your collector archetype, Curation Score and badges. Share the card, then explore your library.', icon: <ArrowRight size={18} /> },
-          ].map((s) => (
+          ]).map((s) => (
             <li key={s.n} className="panel relative p-6">
               <div className="flex items-center justify-between">
                 <span className="font-pixel text-2xl text-phosphor">{s.n}</span>
@@ -191,8 +216,15 @@ export function LandingPage() {
           <SectionHead eyebrow="PRIVACY MODEL" title="Your bookmarks stay yours." />
           <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {[
-              { i: <KeyRound size={18} />, t: 'Official X sign-in', d: 'You approve access on X’s own page. We never ask for or store your password.' },
-              { i: <ShieldCheck size={18} />, t: 'Read-only', d: 'We request permission to read bookmarks and your profile. We can’t post, like or DM.' },
+              ...(liveAvailable
+                ? [
+                    { i: <KeyRound size={18} />, t: 'Official X sign-in', d: 'You approve access on X’s own page. We never ask for or store your password.' },
+                    { i: <ShieldCheck size={18} />, t: 'Read-only', d: 'We request permission to read bookmarks and your profile. We can’t post, like or DM.' },
+                  ]
+                : [
+                    { i: <FileUp size={18} />, t: 'Stays in your browser', d: 'Imports are read and analysed on your device. Nothing is uploaded, and there’s no account to create.' },
+                    { i: <ShieldCheck size={18} />, t: 'No X login, no API', d: 'No password, no OAuth, no paid X API calls. BKMK.exe only sees the file you choose.' },
+                  ]),
               { i: <EyeOff size={18} />, t: 'Private by default', d: 'Your library is only visible to you. Share cards show totals and badges — never bookmark contents.' },
               { i: <Trash2 size={18} />, t: 'Leave anytime', d: 'Disconnect and delete your data from settings. One click, no email required.' },
             ].map((p) => (
@@ -211,7 +243,15 @@ export function LandingPage() {
         <div className="eyebrow text-phosphor">READY WHEN YOU ARE</div>
         <h2 className="display mt-4 text-[clamp(2rem,5.5vw,3.6rem)]">Let’s see what you’ve been saving.</h2>
         <div className="mx-auto mt-10 max-w-xl text-left">
-          <UsernameForm id="footer-handle" compact mode={formMode} />
+          {liveAvailable ? (
+            <UsernameForm id="footer-handle" compact mode={formMode} />
+          ) : (
+            <div className="text-center">
+              <ButtonLink to="/import" variant="primary" size="lg" icon={<FileUp size={16} />}>
+                Import your saves — free
+              </ButtonLink>
+            </div>
+          )}
         </div>
       </section>
 

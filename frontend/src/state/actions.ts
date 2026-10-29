@@ -29,6 +29,8 @@ export function useAccountActions() {
         else window.location.assign(startOAuthUrl(handle)) // token expired: re-authorize first
         return
       }
+      // An import is re-run by choosing the (updated) file again: nothing is kept to re-read.
+      if (state.mode === 'import') return navigate('/import')
       navigate(state.authorized ? '/scan' : '/connect', { state: { handle, reauth: !state.authorized } })
     },
     /** Live only: ends this session. Unlike disconnect, the library stays saved. */

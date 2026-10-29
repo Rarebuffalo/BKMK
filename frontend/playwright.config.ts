@@ -32,6 +32,7 @@ export default defineConfig({
       env: {
         ENVIRONMENT: 'test',
         X_API_MODE: 'fixture',
+        LIVE_SYNC_ENABLED: 'true',
         DATABASE_URL: process.env.E2E_DATABASE_URL ?? 'postgresql+psycopg://bkmk@localhost:54329/bkmk_e2e',
         SESSION_SECRET: 'e2e-session-secret-e2e-session-secret-000000',
         TOKEN_ENCRYPTION_KEY: 'MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=',

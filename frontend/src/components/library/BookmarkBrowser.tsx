@@ -10,6 +10,7 @@ import { demoLibrary, liveLibrary, type LibraryPage } from '../../lib/librarySou
 import { fmt } from '../../lib/format'
 import { Button } from '../ui/Button'
 import { Chip, EmptyState, ErrorState } from '../ui/primitives'
+import { resultSource } from '../brand/Demo'
 import { BookmarkCard } from './BookmarkCard'
 
 const PAGE = 30
@@ -75,7 +76,8 @@ export function BookmarkBrowser({ result, lockedTopic }: { result: ScanResult; l
       setQuery(filters.q)
     }
   }
-  const source = useMemo(() => (result.isDemo ? demoLibrary(result, now) : liveLibrary), [result, now])
+  // Demo and imported results hold every post locally; live results page through the API.
+  const source = useMemo(() => (resultSource(result) === 'live' ? liveLibrary : demoLibrary(result, now)), [result, now])
 
   const [page, setPage] = useState<LibraryPage | null>(null)
   const [loading, setLoading] = useState(true)

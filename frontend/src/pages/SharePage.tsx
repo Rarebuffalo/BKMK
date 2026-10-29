@@ -24,7 +24,7 @@ export function SharePage() {
   const archetype = ARCHETYPES[result.archetype.primary]
   const variant = (CARD_VARIANTS.find((v) => v.id === params.get('variant'))?.id ?? 'terminal') as CardVariant
   const [showScore, setShowScore] = useState(true)
-  const [caption, setCaption] = useState(() => defaultCaption(archetype.name, result.score.total, result.stats.accessible))
+  const [caption, setCaption] = useState(() => defaultCaption(archetype.name, result.score.total, result.stats.accessible, result.importInfo?.kind))
   const [renderFailed, setRenderFailed] = useState(false)
   const [downloaded, setDownloaded] = useState(false)
   const cardRef = useRef<ShareCardHandle>(null)
@@ -145,7 +145,7 @@ export function SharePage() {
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
                 <Button size="sm" icon={<Copy size={13} />} onClick={copy}>Copy caption</Button>
-                <Button size="sm" variant="ghost" onClick={() => setCaption(defaultCaption(archetype.name, result.score.total, result.stats.accessible))}>
+                <Button size="sm" variant="ghost" onClick={() => setCaption(defaultCaption(archetype.name, result.score.total, result.stats.accessible, result.importInfo?.kind))}>
                   Reset
                 </Button>
               </div>
@@ -168,8 +168,9 @@ export function SharePage() {
   )
 }
 
-function defaultCaption(archetype: string, score: number, saved: number) {
-  return `Scanned my X bookmarks: I'm ${archetype}. ${saved.toLocaleString('en-US')} saves decoded, Curation Score ${score}/100. What does yours say?`
+function defaultCaption(archetype: string, score: number, saved: number, kind?: 'likes' | 'bookmarks') {
+  const what = kind === 'likes' ? 'my X likes' : 'my X bookmarks'
+  return `Scanned ${what}: I'm ${archetype}. ${saved.toLocaleString('en-US')} saves decoded, Curation Score ${score}/100. What does yours say?`
 }
 
 function Step({ n, title, done, children }: { n: number; title: string; done?: boolean; children: React.ReactNode }) {
