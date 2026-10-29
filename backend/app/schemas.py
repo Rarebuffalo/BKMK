@@ -71,6 +71,7 @@ class UserOut(Out):
 class MeOut(Out):
     authenticated: bool
     x_configured: bool
+    live_sync_enabled: bool
     api_mode: Literal["live", "fixture"]
     # Days of inactivity after which stored data is deleted (0 = kept until deleted).
     data_retention_days: int

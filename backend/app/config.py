@@ -41,6 +41,10 @@ class Settings(BaseSettings):
     x_api_base: str = "https://api.x.com"
     # "fixture" serves recorded responses for tests/E2E only. Refused in production.
     x_api_mode: Literal["live", "fixture"] = "live"
+    # Live sync reads private bookmarks through X's paid pay-per-use API (sign-in alone
+    # is a billed user read). Off by default: the app then makes no billable X calls
+    # and users analyse an import in their browser instead. Opt in deliberately.
+    live_sync_enabled: bool = False
 
     # ── Secrets (no defaults) ──
     session_secret: str | None = None
@@ -107,11 +111,10 @@ class Settings(BaseSettings):
             raise ValueError("ALLOWED_ORIGINS cannot contain '*' with credentialed requests")
 
         if self.environment == "production":
-            missing = [
-                name
-                for name in ("x_client_id", "x_client_secret", "session_secret", "token_encryption_key")
-                if not getattr(self, name)
-            ]
+            required = ["session_secret", "token_encryption_key"]
+            if self.live_sync_enabled:
+                required += ["x_client_id", "x_client_secret"]
+            missing = [name for name in required if not getattr(self, name)]
             if missing:
                 raise ValueError(f"Missing required production settings: {', '.join(n.upper() for n in missing)}")
             if self.x_api_mode != "live":
@@ -137,7 +140,10 @@ class Settings(BaseSettings):
 
     @property
     def x_configured(self) -> bool:
-        return self.x_api_mode == "fixture" or bool(self.x_client_id and self.x_client_secret)
+        """True only when live sync is switched on and has credentials (or fixtures)."""
+        return self.live_sync_enabled and (
+            self.x_api_mode == "fixture" or bool(self.x_client_id and self.x_client_secret)
+        )
 
     def require_secrets(self) -> tuple[str, str]:
         if not self.session_secret or not self.token_encryption_key:

@@ -132,6 +132,8 @@ def callback(
     if not code:
         return fail("provider_error")
 
+    if not settings.x_configured:
+        return fail("not_configured")  # never spend a billed /users/me read with live sync off
     verifier = TokenCipher(key).decrypt(row.code_verifier_enc, f"pkce:{row.state_hash}")
     client = make_x_client(settings)
     try:
@@ -207,6 +209,7 @@ def fixture_authorize(state: str = Query(max_length=128), settings: Settings = D
 def me(current: CurrentSession | None = Depends(optional_session), settings: Settings = Depends(get_settings)) -> MeOut:
     base = {
         "x_configured": settings.x_configured,
+        "live_sync_enabled": settings.live_sync_enabled,
         "api_mode": settings.x_api_mode,
         "data_retention_days": settings.data_retention_days,
     }

@@ -40,11 +40,18 @@ ACTIVE = ("queued", "running")
 MAX_PAGES = 20  # hard safety stop independent of X's behaviour
 
 
+LIVE_SYNC_OFF = {
+    "code": "live_sync_disabled",
+    "message": "Live X sync is switched off on this server, so no paid X API calls are made. Import your bookmarks instead.",
+}
+
 # ── creation ────────────────────────────────────────────────────────────────
 
 
 def create_scan(db: Session, user: User, settings: Settings, mode: str | None) -> tuple[Scan, bool]:
     """Returns (scan, created). An active scan is reused instead of starting a second one."""
+    if not settings.x_configured:
+        raise HTTPException(status.HTTP_409_CONFLICT, detail=LIVE_SYNC_OFF)
     active = db.scalar(select(Scan).where(Scan.user_id == user.id, Scan.status.in_(ACTIVE)))
     if active:
         return active, False
@@ -284,6 +291,12 @@ def run_scan(
     try:
         scan = db.get(Scan, scan_id)
         if scan is None or scan.status != "queued":
+            return
+        if not settings.x_configured:
+            # Switched off after this scan was queued: fail it without calling X.
+            scan.status, scan.error_code, scan.error_message = "failed", LIVE_SYNC_OFF["code"], LIVE_SYNC_OFF["message"]
+            scan.completed_at = utcnow()
+            db.commit()
             return
         user = db.get(User, scan.user_id)
         assert user is not None

@@ -11,6 +11,7 @@ os.environ.update(
         "ENVIRONMENT": "test",
         "DATABASE_URL": os.environ.get("TEST_DATABASE_URL", "postgresql+psycopg://bkmk@localhost:54329/bkmk_test"),
         "X_API_MODE": "fixture",
+        "LIVE_SYNC_ENABLED": "true",
         "SESSION_SECRET": "test-session-secret-test-session-secret-0000",
         "TOKEN_ENCRYPTION_KEY": "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=",
         "FRONTEND_URL": "http://frontend.test",
