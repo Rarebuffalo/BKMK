@@ -7,7 +7,7 @@ import type { ImportInfo, RawBookmark } from '../domain/types'
 /** What the imported items are. X's archive has Likes, not bookmarks. */
 export type ImportKind = 'likes' | 'bookmarks'
 
-export type ImportFormat = 'x-archive' | 'json' | 'csv' | 'html' | 'text'
+export type ImportFormat = 'x-archive' | 'json' | 'csv' | 'html' | 'text' | 'paste'
 
 export interface ImportItem {
   id: string
@@ -19,6 +19,8 @@ export interface ImportItem {
   authorName?: string
   /** Real destinations only: t.co short links aren't resolvable offline. */
   links: string[]
+  /** When the source shows the post's own timestamp (pasted pages); otherwise derived from the id. */
+  createdAt?: string
 }
 
 export interface ParsedFile {
@@ -294,6 +296,7 @@ export function mergeParsed(files: ParsedFile[]): { items: ImportItem[]; summary
         authorName: prev.authorName ?? item.authorName,
         url: prev.handle ? prev.url : item.url,
         links: prev.links.length ? prev.links : item.links,
+        createdAt: prev.createdAt ?? item.createdAt,
       })
     }
   }
@@ -312,7 +315,7 @@ export function mergeParsed(files: ParsedFile[]): { items: ImportItem[]; summary
       skipped: files.reduce((n, f) => n + f.skipped, 0),
       withText: items.filter((i) => i.text).length,
       withAuthor: items.filter((i) => i.handle).length,
-      withDate: items.filter((i) => snowflakeDate(i.id)).length,
+      withDate: items.filter((i) => i.createdAt || snowflakeDate(i.id)).length,
       truncated: all.length - items.length,
     },
   }
@@ -323,7 +326,7 @@ export function toRawBookmarks(items: ImportItem[]): RawBookmark[] {
     id: i.id,
     author: { handle: i.handle ?? '', name: i.authorName ?? (i.handle ? `@${i.handle}` : 'Author not in import') },
     text: i.text ?? '',
-    createdAt: snowflakeDate(i.id),
+    createdAt: i.createdAt ?? snowflakeDate(i.id),
     url: i.url,
     links: i.links,
     accessible: true,
