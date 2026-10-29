@@ -164,6 +164,16 @@ test('live sign-out ends the session but keeps the library for the next sign-in'
   await expect(page).toHaveURL(/\/$/)
 })
 
+test('X refusing for billing (402) shows an owner-side, non-retryable error', async ({ page }) => {
+  await liveSignIn(page, /credit used up/i)
+  await expect(page).toHaveURL(/\/scan/)
+  await expect(page.getByRole('heading', { name: /scanning is paused: x api credit ran out/i })).toBeVisible({ timeout: 20_000 })
+  await expect(page.getByText(/nothing is wrong with your x account/i)).toBeVisible()
+  await expect(page.getByText(/usually temporary/i)).toHaveCount(0)
+  await expect(page.getByRole('button', { name: /retry scan/i })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: /reconnect x/i })).toHaveCount(0)
+})
+
 test('live rate-limited scan is partial and labelled provisional', async ({ page }) => {
   await liveSignIn(page, /rate-limited/i)
   await expect(page).toHaveURL(/\/reveal$/, { timeout: 25_000 })

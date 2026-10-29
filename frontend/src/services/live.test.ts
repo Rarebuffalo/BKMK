@@ -86,6 +86,25 @@ describe('live scan service', () => {
     expect(last).toMatchObject({ type: 'error', code: 'auth-expired', message: 'Expired' })
   })
 
+  it('maps a background X 402 to a non-retryable billing error, not a temporary one', async () => {
+    startScan.mockResolvedValue(base)
+    scan.mockResolvedValue({ ...base, status: 'failed', errorCode: 'x_payment_required', errorMessage: 'X API credit has run out.' })
+    const last = (await collect()).at(-1)
+    expect(last).toMatchObject({ type: 'error', code: 'x-billing', retryable: false, message: 'X API credit has run out.' })
+  })
+
+  it('keeps X server errors retryable', async () => {
+    startScan.mockResolvedValue(base)
+    scan.mockResolvedValue({ ...base, status: 'failed', errorCode: 'api_error', errorMessage: 'X returned a server error (HTTP 503).' })
+    expect((await collect()).at(-1)).toMatchObject({ type: 'error', code: 'api-error', retryable: true })
+  })
+
+  it('maps an X access-level refusal to a non-retryable error', async () => {
+    startScan.mockResolvedValue(base)
+    scan.mockResolvedValue({ ...base, status: 'failed', errorCode: 'x_access_restricted', errorMessage: 'No bookmark access.' })
+    expect((await collect()).at(-1)).toMatchObject({ type: 'error', code: 'x-access', retryable: false })
+  })
+
   it('maps the scan cooldown to a non-retryable error', async () => {
     startScan.mockRejectedValue(new ApiError(429, 'scan_cooldown', 'You can scan again in 4 min.'))
     const last = (await collect()).at(-1)

@@ -175,6 +175,8 @@ const FAILURE_COPY: Record<string, string> = {
   exchange_failed: 'X didn’t accept the sign-in. Try again in a moment.',
   provider_error: 'X reported an error during sign-in. Nothing was saved.',
   invalid_handle: 'That handle isn’t valid. Check it and try again.',
+  x_payment_required: 'X refused the sign-in because BKMK.exe’s X API credit has run out. This is on our side, not your account. You can still try the demo.',
+  x_access_restricted: 'X says this app’s API access doesn’t include what sign-in needs. This is on our side, not your account. You can still try the demo.',
   not_invited: 'BKMK.exe is in a private beta and this X account isn’t on the list yet. Access was handed back to X and nothing was saved. You can still try the demo.',
 }
 

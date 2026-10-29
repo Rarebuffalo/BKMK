@@ -28,10 +28,20 @@ function errorCode(code: string | null | undefined): ScanErrorCode {
       return 'network'
     case 'missing_permissions':
       return 'missing-permissions'
+    case 'x_payment_required':
+      return 'x-billing'
+    case 'x_access_restricted':
+      return 'x-access'
+    case 'x_request_rejected':
+    case 'invalid_request':
+      return 'x-rejected'
     default:
       return 'api-error'
   }
 }
+
+// Retrying can't fix these: they need time to pass or the app owner to act.
+const NOT_RETRYABLE = new Set<ScanErrorCode>(['cooldown', 'daily-budget', 'x-billing', 'x-access'])
 
 export const liveScanService: ScanService = {
   start({ mode }, onEvent) {
@@ -49,7 +59,7 @@ export const liveScanService: ScanService = {
       } catch (e) {
         const code = isApiError(e) ? e.code : 'network'
         const message = isApiError(e) ? e.message : 'Couldn’t start the scan.'
-        emit({ type: 'error', code: errorCode(code), message, retryable: code !== 'scan_cooldown' && code !== 'daily_budget' })
+        emit({ type: 'error', code: errorCode(code), message, retryable: !NOT_RETRYABLE.has(errorCode(code)) })
         return
       }
       emit({ type: 'log', text: `scan ${scan.id.slice(0, 8)} · ${scan.mode} · limit ${scan.requestedLimit}`, tone: 'muted' })
@@ -91,7 +101,8 @@ export const liveScanService: ScanService = {
           return
         }
         if (scan.status === 'failed') {
-          emit({ type: 'error', code: errorCode(scan.errorCode), message: scan.errorMessage ?? 'The scan failed.', retryable: true })
+          const code = errorCode(scan.errorCode)
+          emit({ type: 'error', code, message: scan.errorMessage ?? 'The scan failed.', retryable: !NOT_RETRYABLE.has(code) })
           return
         }
         if (!slowSent && Date.now() - started > SLOW_AFTER_MS) {

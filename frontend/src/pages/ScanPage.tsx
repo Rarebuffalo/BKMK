@@ -326,8 +326,26 @@ function ScanError({ code, message, retrieved, onRetry, handle, live }: { code: 
       />
     )
   }
+  if (code === 'x-billing' || code === 'x-access') {
+    // The app owner has to act (X billing or access level); retrying would only repeat the refusal.
+    return (
+      <ErrorState
+        code={code === 'x-billing' ? 'X_API_402' : 'X_ACCESS_LEVEL'}
+        title={code === 'x-billing' ? 'Scanning is paused: X API credit ran out' : 'X hasn’t enabled bookmark access for this app'}
+        body={<>{message}{kept} Nothing is wrong with your X account, and you don’t need to reconnect.</>}
+        action={
+          <>
+            <Button variant="primary" onClick={() => navigate('/')}>Back to start</Button>
+            {retrieved > 0 && <Button onClick={() => navigate('/app')}>Open my dashboard</Button>}
+          </>
+        }
+      />
+    )
+  }
+  const temporary = code === 'api-error' || code === 'network' || code === 'rate-limited'
   const titles: Partial<Record<ScanErrorCode, string>> = {
     'rate-limited': 'X’s rate limit was reached',
+    'x-rejected': 'X rejected the request',
     'missing-permissions': 'X refused bookmark access',
     network: 'Connection problem',
   }
@@ -335,7 +353,7 @@ function ScanError({ code, message, retrieved, onRetry, handle, live }: { code: 
     <ErrorState
       code={code === 'api-error' ? (live ? 'X_API_ERROR' : 'X_API_503') : code.toUpperCase().replace('-', '_')}
       title={titles[code] ?? 'The scan hit a problem'}
-      body={<>{message}{kept ?? ' This is usually temporary.'}</>}
+      body={<>{message}{kept ?? (temporary ? ' This is usually temporary.' : null)}</>}
       action={
         <>
           <Button variant="primary" icon={<RotateCcw size={14} />} onClick={onRetry}>Retry scan</Button>
