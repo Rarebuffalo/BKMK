@@ -18,7 +18,32 @@ These pricing points **can't be verified without credentials**:
 - **Owned reads.** Whether bookmarks of *other* users who signed into our app count as owned reads. We assume they don't (the pessimistic case).
 - **Author expansion.** Whether `expansions=author_id` (the users in `includes`) is billed as user reads. We assume it is.
 
-## Requests and cost per scan
+## Starter scan (code defaults since 2026-11-01)
+
+Live sync is **off** by default (`LIVE_SYNC_ENABLED=false`), so the deployed app makes no X calls. When it's switched on, the defaults below apply. `backend/tests/test_starter_scan.py` checks every request count and charge in this table by recording all calls to the fake X API used in tests.
+
+| Step | X requests | Billed resources | Cost |
+|---|---|---|---|
+| Sign-in | `POST /2/oauth2/token` (no read price listed), `GET /2/users/me` | 1 user read | $0.010 |
+| First scan (`SCAN_MAX_BOOKMARKS=30`) | 1 × bookmarks, `max_results=30`, **no `expansions`** | 30 post reads | $0.150 |
+| **New user total** | 3 requests (2 billed) | | **$0.160** |
+| Refresh, nothing new | 1 × bookmarks, `max_results=1`, stops at a known post | 1 post read | $0.005 |
+| Refresh, k new (k < 30) | 1 probe plus pages of 10 until a known post | 1 + 10 × ⌈k/10⌉ (roughly), capped at 30 | ≈ $0.005–$0.155 |
+| Refresh, repeated the same UTC day | same requests | deduplicated by X (soft guarantee) | ≈ $0 |
+| 402 from X | 1 request, never retried | nothing returned | $0 |
+
+- **Before anything billable:** the daily cap is checked before `/users/me` at sign-in and before each page, sized to that request's worst case.
+- **Cooldown:** 1 hour between a user's scans by default.
+- **Sessions** last 24 h. `/users/me` runs once per sign-in, never per scan, because X's token response carries no user ID.
+
+**Not verifiable in X's docs:**
+- Whether author objects from `expansions` are billed. Moot now: the starter scan doesn't request them.
+- The scope of the 24-hour deduplication: per app or per account. A forum answer suggests account-wide.
+- Whether a request that returns zero posts costs anything. Reads are billed "per resource returned", so presumably not.
+
+## Requests and cost per scan (full-collection configuration)
+
+Applies with `SCAN_MAX_BOOKMARKS=800` and `X_EXPAND_AUTHORS=true`, the earlier defaults, which are still supported.
 
 - Bookmarks are 100 per page, with a hard cap of 800, so a scan makes at most 8 pages plus `/users/me` at sign-in.
 - Unique authors are assumed to be 35% of bookmarks for small collections and ~300 at 800.
