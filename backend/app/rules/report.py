@@ -49,10 +49,12 @@ def compute_stats(items: list[StatItem]) -> dict:
     for i in accessible:
         topic_counts[i.topic] += 1
         type_counts[i.content_type] += 1
+        breakdown[i.topic]["types"][i.content_type] += 1
+        if not i.author_handle:
+            continue  # author not loaded: no fake "unknown" author in the rankings
         authors[i.author_handle] += 1
         author_names[i.author_handle] = i.author_name
         breakdown[i.topic]["authors"][i.author_handle] += 1
-        breakdown[i.topic]["types"][i.content_type] += 1
 
     classified = len(accessible) - topic_counts["other"]
     top_topics = sorted(

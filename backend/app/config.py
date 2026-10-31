@@ -55,11 +55,17 @@ class Settings(BaseSettings):
     cookie_secure: bool | None = None  # defaults to True outside development/test
 
     # ── Scan behaviour and cost control ──
-    scan_max_bookmarks: int = 800
-    scan_page_size: int = 100
-    scan_refresh_page_size: int = 25
-    scan_cooldown_seconds: int = 300
-    x_expand_authors: bool = True
+    # Starter scan: every post read is billed by X, so the first scan reads only the
+    # newest SCAN_MAX_BOOKMARKS (30 = the sample size the score stops scaling at).
+    scan_max_bookmarks: int = Field(default=30, ge=1, le=800)
+    scan_page_size: int = Field(default=100, ge=1, le=100)
+    # Refreshes first read just the newest bookmark; if it's already stored, they stop.
+    scan_refresh_probe_size: int = Field(default=1, ge=1, le=100)
+    scan_refresh_page_size: int = Field(default=10, ge=1, le=100)
+    scan_cooldown_seconds: int = 3600
+    # Author profiles are a separate billed user read each ($0.010, twice a post read)
+    # and nothing in the score, archetype or badges uses them. Off unless a feature needs them.
+    x_expand_authors: bool = False
     x_max_rate_limit_wait_seconds: int = 20
     x_request_timeout_seconds: float = 15.0
 

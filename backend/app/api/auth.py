@@ -19,7 +19,7 @@ from ..models import AppSession, OAuthState, User, utcnow
 from ..ratelimit import enforce
 from ..schemas import ConnectionOut, MeOut, UserOut
 from ..security import TokenCipher, constant_time_equals, keyed_hash, new_opaque_token, pkce_challenge, pkce_verifier
-from ..services.budget import record_usage
+from ..services.budget import can_afford_cost, record_usage
 from ..services.library import delete_account
 from ..services.tokens import store_tokens
 from ..sessions import CurrentSession, clear_session_cookie, create_session, optional_session, require_csrf
@@ -134,6 +134,9 @@ def callback(
 
     if not settings.x_configured:
         return fail("not_configured")  # never spend a billed /users/me read with live sync off
+    # Sign-in costs one billed user read (/2/users/me: X's token response carries no user id).
+    if not can_afford_cost(db, settings, settings.x_price_user_read):
+        return fail("daily_budget")
     verifier = TokenCipher(key).decrypt(row.code_verifier_enc, f"pkce:{row.state_hash}")
     client = make_x_client(settings)
     try:
@@ -212,6 +215,7 @@ def me(current: CurrentSession | None = Depends(optional_session), settings: Set
         "live_sync_enabled": settings.live_sync_enabled,
         "api_mode": settings.x_api_mode,
         "data_retention_days": settings.data_retention_days,
+        "scan_limit": settings.scan_max_bookmarks,
     }
     if current is None:
         return MeOut(authenticated=False, **base)

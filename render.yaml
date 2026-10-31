@@ -36,8 +36,11 @@ services:
         sync: false # 32-byte url-safe base64: uv run python -m app.cli gen-secrets
       - key: X_DAILY_BUDGET_USD
         value: "2.00"
+      # Starter scan: first scans read only the 30 newest bookmarks; no author lookups.
       - key: SCAN_MAX_BOOKMARKS
-        value: "200"
+        value: "30"
+      - key: X_EXPAND_AUTHORS
+        value: "false"
       - key: SCAN_COOLDOWN_SECONDS
         value: "3600"
       - key: ALLOWED_X_USERNAMES

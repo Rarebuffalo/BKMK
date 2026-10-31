@@ -14,7 +14,7 @@ from datetime import timedelta
 from decimal import Decimal
 
 from fastapi import HTTPException, status
-from sqlalchemy import delete, or_, select, update
+from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -72,7 +72,10 @@ def create_scan(db: Session, user: User, settings: Settings, mode: str | None) -
                     "retryAfter": int(wait),
                 },
             )
-    if not can_afford(db, settings, settings.scan_page_size):
+    has_bookmarks = db.scalar(select(Bookmark.id).where(Bookmark.user_id == user.id).limit(1)) is not None
+    resolved = mode if mode in ("full", "refresh") else ("refresh" if has_bookmarks else "full")
+    # Checked before anything billable: the first request's worst case must fit today's cap.
+    if not can_afford(db, settings, _first_request_size(settings, resolved)):
         raise HTTPException(
             status.HTTP_429_TOO_MANY_REQUESTS,
             detail={
@@ -81,8 +84,6 @@ def create_scan(db: Session, user: User, settings: Settings, mode: str | None) -
                 "retryAfter": seconds_until_reset(),
             },
         )
-    has_bookmarks = db.scalar(select(Bookmark.id).where(Bookmark.user_id == user.id).limit(1)) is not None
-    resolved = mode if mode in ("full", "refresh") else ("refresh" if has_bookmarks else "full")
     scan = Scan(
         user_id=user.id,
         status="queued",
@@ -95,6 +96,30 @@ def create_scan(db: Session, user: User, settings: Settings, mode: str | None) -
     user.last_seen_at = utcnow()
     db.commit()
     return scan, True
+
+
+def _ever_read_whole_collection(db: Session, user: User) -> bool:
+    return (
+        db.scalar(
+            select(Scan.id)
+            .where(Scan.user_id == user.id, Scan.mode == "full", Scan.stop_reason == "end_of_collection")
+            .limit(1)
+        )
+        is not None
+    )
+
+
+def _first_request_size(settings: Settings, mode: str) -> int:
+    if mode == "refresh":
+        return min(settings.scan_refresh_probe_size, settings.scan_max_bookmarks)
+    return min(settings.scan_page_size, settings.scan_max_bookmarks)
+
+
+def _page_size(settings: Settings, mode: str, page_no: int) -> int:
+    if mode == "full":
+        return settings.scan_page_size
+    # Refresh: a one-post probe first. Most refreshes end there, costing a single read.
+    return settings.scan_refresh_probe_size if page_no == 1 else settings.scan_refresh_page_size
 
 
 def fail_interrupted_scans(db: Session) -> int:
@@ -241,12 +266,13 @@ def _compute_report(run: _Run, *, coverage: str, note: str | None) -> list[str]:
             Bookmark.x_created_at,
         ).where(Bookmark.user_id == user.id)
     ).all()
-    items = [StatItem(t, ct, h or "unknown", n or h or "unknown", d) for t, ct, h, n, d in rows]
+    # No author data (starter scans skip the billed author lookup): counted as posts, never as a fake author.
+    items = [StatItem(t, ct, h or "", n or h or "", d) for t, ct, h, n, d in rows]
     stats = compute_stats(items)
     stats["inaccessible"] = run.unavailable
     stats["retrieved"] = stats["accessible"] + run.unavailable
     score = compute_score(stats)
-    archetype = derive_archetype(stats, provisional=coverage != "complete")
+    archetype = derive_archetype(stats, provisional=coverage == "partial")
     scan.coverage, scan.coverage_note = coverage, note
 
     profile = db.get(ProfileStats, user.id) or ProfileStats(user_id=user.id)
@@ -324,7 +350,6 @@ def run_scan(
             scan.classified += 1
         run.phase("classify", "classifying")
 
-        complete = scan.stop_reason in ("end_of_collection", "caught_up")
         if scan.mode == "full" and scan.stop_reason == "end_of_collection":
             # Everything X still returns was seen; anything else was unbookmarked,
             # deleted or made private and must not be kept (X Developer Policy).
@@ -337,14 +362,22 @@ def run_scan(
             scan.removed_bookmarks = removed.rowcount or 0
         run.phase("stats", "calculating_stats")
 
-        note = None
-        if scan.stop_reason == "scan_limit":
-            note = f"Stopped at the scan limit of {scan.requested_limit} bookmarks. Older bookmarks were not analysed."
-        elif scan.stop_reason == "daily_budget":
+        stored = db.scalar(select(func.count()).select_from(Bookmark).where(Bookmark.user_id == user.id)) or 0
+        # A deliberate sample (the starter scan's cap) isn't a failure: it's labelled, not provisional.
+        whole_collection_seen = scan.stop_reason == "end_of_collection" or (
+            scan.stop_reason == "caught_up" and _ever_read_whole_collection(db, user)
+        )
+        if scan.stop_reason == "daily_budget":
+            coverage = "partial"
             note = "Stopped early: today's API budget was reached. Rescan after midnight UTC to continue."
-        elif complete and scan.mode == "full":
+        elif whole_collection_seen:
+            coverage = "complete"
             note = "Includes every bookmark X made available to this app (X returns up to your most recent ~800)."
-        unlocked = _compute_report(run, coverage="complete" if complete else "partial", note=note)
+        else:
+            coverage = "sample"
+            note = f"Your Bookmark DNA is based on your {stored} most recent bookmarks."
+        complete = coverage != "partial"
+        unlocked = _compute_report(run, coverage=coverage, note=note)
         run.phase("achievements", "evaluating_achievements")
         for key in unlocked:
             run.event("achievement_unlocked", id=key)
@@ -381,7 +414,6 @@ def run_scan(
 def _retrieve(run: _Run, token: str, cipher) -> None:
     db, scan, s = run.db, run.scan, run.s
     run.phase("retrieve", "retrieving_page")
-    page_size = s.scan_page_size if scan.mode == "full" else s.scan_refresh_page_size
     cursor: str | None = None
     refreshed = False
     seen_authors: set[str] = set()
@@ -390,6 +422,8 @@ def _retrieve(run: _Run, token: str, cipher) -> None:
         if remaining <= 0:
             scan.stop_reason = "scan_limit"
             return
+        # By pages actually received, so a token-refresh retry doesn't skip the probe.
+        page_size = _page_size(s, scan.mode, scan.pages + 1)
         if not can_afford(db, s, min(page_size, remaining)):
             scan.stop_reason = "daily_budget"
             return

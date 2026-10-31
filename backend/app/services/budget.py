@@ -31,12 +31,17 @@ def spent_today(db: Session) -> Decimal:
 
 
 def worst_case_page_cost(settings: Settings, posts: int) -> Decimal:
-    # A page of n posts can also expand up to n distinct authors.
-    return Decimal(posts) * (settings.x_price_post_read + settings.x_price_user_read)
+    # With author expansion, a page of n posts can also bring up to n distinct authors.
+    per_post = settings.x_price_post_read + (settings.x_price_user_read if settings.x_expand_authors else 0)
+    return Decimal(posts) * per_post
 
 
 def can_afford(db: Session, settings: Settings, posts: int) -> bool:
-    return spent_today(db) + worst_case_page_cost(settings, posts) <= settings.x_daily_budget_usd
+    return can_afford_cost(db, settings, worst_case_page_cost(settings, posts))
+
+
+def can_afford_cost(db: Session, settings: Settings, cost: Decimal) -> bool:
+    return spent_today(db) + cost <= settings.x_daily_budget_usd
 
 
 def record_usage(db: Session, settings: Settings, *, requests: int, posts: int, users: int) -> None:

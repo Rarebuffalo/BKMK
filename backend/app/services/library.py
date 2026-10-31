@@ -30,7 +30,8 @@ def bookmark_out(b: Bookmark) -> BookmarkOut:
     return BookmarkOut(
         id=str(b.id),
         x_post_id=b.x_post_id,
-        author=AuthorOut(handle=b.author_handle or "unknown", name=b.author_name or b.author_handle or "Unknown"),
+        # Starter scans don't load authors (a separately billed read); say so rather than invent one.
+        author=AuthorOut(handle=b.author_handle or "", name=b.author_name or b.author_handle or "Author not loaded"),
         text=b.text,
         created_at=b.x_created_at,
         url=b.url,

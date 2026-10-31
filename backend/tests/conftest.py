@@ -16,6 +16,10 @@ os.environ.update(
         "TOKEN_ENCRYPTION_KEY": "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=",
         "FRONTEND_URL": "http://frontend.test",
         "SCAN_COOLDOWN_SECONDS": "0",
+        # Most tests exercise the full-collection engine (still supported by config).
+        # test_starter_scan.py covers the code defaults: 30 newest, no author lookups.
+        "SCAN_MAX_BOOKMARKS": "800",
+        "X_EXPAND_AUTHORS": "true",
         "X_DAILY_BUDGET_USD": "1000",
         "X_CLIENT_ID": "",
         "X_CLIENT_SECRET": "",

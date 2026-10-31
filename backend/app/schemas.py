@@ -75,6 +75,8 @@ class MeOut(Out):
     api_mode: Literal["live", "fixture"]
     # Days of inactivity after which stored data is deleted (0 = kept until deleted).
     data_retention_days: int
+    # How many of the newest bookmarks a first scan reads (the starter scan).
+    scan_limit: int
     user: UserOut | None = None
     connection: ConnectionOut | None = None
     csrf_token: str | None = None
