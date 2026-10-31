@@ -37,7 +37,7 @@ export function BookmarkCard({ bookmark: b, query = '', isDemo, onAuthor }: { bo
     return (
       <article className="panel border-dashed p-4 text-sm text-paper-faint">
         <div className="flex items-center justify-between gap-2 font-mono text-xs">
-          <span>{b.author.handle ? `@${b.author.handle}` : 'author not in import'}</span>
+          <span>{b.author.handle ? `@${b.author.handle}` : b.author.name}</span>
           <span>{formatDate(b.createdAt)}</span>
         </div>
         <p className="mt-2">This post is no longer available — it was deleted or made private after you saved it. It isn’t counted in your score.</p>

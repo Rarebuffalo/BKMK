@@ -170,7 +170,8 @@ function DemoConnect() {
 }
 
 const FAILURE_COPY: Record<string, string> = {
-  not_configured: 'Live X sign-in isn’t configured on this server yet. You can still try the demo.',
+  not_configured: 'Connect with X isn’t switched on yet: live scans use X’s paid API, so they open once the app is funded. Copy from X instead — it’s free.',
+  daily_budget: 'Today’s live scans are used up, so X wasn’t contacted. Try again after midnight UTC, or copy from X for free.',
   state_mismatch: 'The sign-in link expired or was opened in a different browser. Start again from this page.',
   exchange_failed: 'X didn’t accept the sign-in. Try again in a moment.',
   provider_error: 'X reported an error during sign-in. Nothing was saved.',
@@ -239,7 +240,9 @@ function LiveConnect() {
               <div className="animate-rise">
                 <h1 className="text-2xl font-bold">{fromNav.reauth ? 'Reconnect to X' : 'Connect X and scan'}</h1>
                 <p className="mt-1 text-sm text-paper-dim">
-                  {fromNav.reauth ? 'Your authorization expired. Approve access again to continue.' : 'You’ll approve read-only access on X’s own page, then come straight back here.'}
+                  {fromNav.reauth
+                    ? 'Your authorization expired. Approve access again to continue.'
+                    : `You’ll approve read-only access on X’s own page, then come straight back here. BKMK.exe reads your ${live.me?.scanLimit ?? 30} most recent bookmarks.`}
                 </p>
                 <div className="mt-5 grid gap-3 sm:grid-cols-2">
                   <PermissionList title="BKMK.exe will be able to" tone="ok" items={['Read your bookmarks', 'Read your public profile', 'Stay connected until you disconnect']} />

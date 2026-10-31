@@ -168,7 +168,11 @@ export function ScanPage() {
                 <div className="text-right font-mono text-xs text-paper-faint">
                   <div>page {String(view.page).padStart(2, '0')}</div>
                   <div>1 cell = {PER_CELL} saves</div>
-                  <div title="X's bookmarks API returns your 800 most recent bookmarks.">X shares up to {CELLS * PER_CELL}</div>
+                  {mode === 'live' ? (
+                    <div title="Each bookmark read is billed by X, so the first scan reads only your newest ones.">reads your newest {live.me?.scanLimit ?? 30}</div>
+                  ) : (
+                    <div title="X's bookmarks API returns your 800 most recent bookmarks.">X shares up to {CELLS * PER_CELL}</div>
+                  )}
                 </div>
               </div>
               <div className="mt-6 grid grid-cols-20 gap-[3px]" aria-hidden>

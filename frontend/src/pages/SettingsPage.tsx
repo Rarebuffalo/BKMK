@@ -72,7 +72,9 @@ export function SettingsPage() {
               <div className="mt-0.5 text-paper-faint">
                 {imported
                   ? `${result.stats.accessible} imported ${result.importInfo?.kind === 'likes' ? 'likes' : 'posts'}. Import a newer file any time; badges you’ve earned are kept.`
-                  : `${result.coverage === 'complete' ? 'Complete' : 'Partial'} · ${result.stats.accessible} readable bookmarks. Rescans only add new posts — badges aren’t awarded twice.`}
+                  : result.coverage === 'sample'
+                    ? `Based on your ${result.stats.accessible} most recent bookmarks. Rescans first check your newest bookmark and only read new ones — badges aren’t awarded twice.`
+                    : `${result.coverage === 'complete' ? 'Complete' : 'Partial'} · ${result.stats.accessible} readable bookmarks. Rescans only add new posts — badges aren’t awarded twice.`}
               </div>
             </div>
             <Button icon={<RefreshCw size={14} />} onClick={() => actions.rescan(result.handle)}>

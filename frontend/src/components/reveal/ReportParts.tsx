@@ -193,7 +193,7 @@ export function CoverageLine({ result, className }: { result: ScanResult; classN
   return (
     <div className={cx('flex flex-col gap-2', className)}>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-xs text-paper-faint">
-        <span className={cx('flex items-center gap-1.5', result.coverage === 'complete' ? 'text-phosphor' : 'text-amber')}>
+        <span className={cx('flex items-center gap-1.5', result.coverage === 'partial' ? 'text-amber' : 'text-phosphor')}>
           <span className="size-1.5 bg-current" />
           {result.source === 'import'
             ? result.coverage === 'complete'
@@ -201,7 +201,9 @@ export function CoverageLine({ result, className }: { result: ScanResult; classN
               : 'Import · newest only'
             : result.coverage === 'complete'
               ? 'Scan complete'
-              : 'Partial scan'}
+              : result.coverage === 'sample'
+                ? `Starter scan · newest ${fmt(s.accessible)}`
+                : 'Partial scan'}
         </span>
         <span>{fmt(s.accessible)} readable</span>
         {s.inaccessible > 0 && <span>{fmt(s.inaccessible)} deleted/protected skipped</span>}
@@ -210,8 +212,8 @@ export function CoverageLine({ result, className }: { result: ScanResult; classN
         </span>
       </div>
       {result.coverageNote && (
-        <div className="flex gap-2 rounded-sm border border-amber/40 bg-amber/5 p-2.5 text-xs text-amber">
-          <TriangleAlert size={14} className="mt-px shrink-0" />
+        <div className={cx('flex gap-2 rounded-sm border p-2.5 text-xs', result.coverage === 'sample' ? 'border-phosphor/30 bg-phosphor/5 text-phosphor' : 'border-amber/40 bg-amber/5 text-amber')}>
+          {result.coverage === 'sample' ? <Info size={14} className="mt-px shrink-0" /> : <TriangleAlert size={14} className="mt-px shrink-0" />}
           {result.coverageNote}
         </div>
       )}

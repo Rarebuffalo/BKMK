@@ -120,7 +120,7 @@ test('with live sync off, the landing page leads with the free import', async ({
     route.fulfill({ json: { authenticated: false, xConfigured: false, liveSyncEnabled: false, apiMode: 'live', dataRetentionDays: 90, user: null, connection: null, csrfToken: null } }),
   )
   await page.goto('/')
-  await expect(page.getByText(/live x sync is off here/i)).toBeVisible()
+  await expect(page.getByText(/live scanning opens once it’s funded/i)).toBeVisible()
   await expect(page.locator('#hero-handle')).toHaveCount(0)
   await page.getByRole('link', { name: /get my bookmark dna — free/i }).first().click()
   await expect(page).toHaveURL(/\/import$/)

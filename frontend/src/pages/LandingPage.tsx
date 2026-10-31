@@ -76,14 +76,14 @@ export function LandingPage() {
           <p className="mt-3 font-mono text-xs text-paper-faint">
             {liveAvailable ? (
               <>
-                Rather not connect?{' '}
+                Live scan reads your {live.me?.scanLimit ?? 30} most recent bookmarks. Rather not connect?{' '}
                 <Link to="/import" className="text-paper-dim underline decoration-dotted underline-offset-4 hover:text-phosphor">
                   Import a file instead (free)
                 </Link>
                 {' · '}
               </>
             ) : live.status === 'checking' ? null : (
-              'Live X sync is off here: X charges per bookmark read. '
+              'Connect with X needs paid X API access, so live scanning opens once it’s funded. Until then, copying from X is free. '
             )}
             <Link to="/connect" state={{ handle: 'demo', mode: 'demo' }} className="text-paper-dim underline decoration-dotted underline-offset-4 hover:text-phosphor">
               Try the demo profile (sample data) →
@@ -128,7 +128,7 @@ export function LandingPage() {
           {(liveAvailable
             ? [
                 { n: '01', t: 'Connect', d: 'Enter your handle, confirm it’s you, and approve read-only bookmark access on X.', icon: <KeyRound size={18} /> },
-                { n: '02', t: 'Scan', d: 'We index what X lets apps read — your 800 most recent bookmarks — sorting topics, threads, repos and papers with real progress.', icon: <Search size={18} /> },
+                { n: '02', t: 'Scan', d: `We read your ${live.me?.scanLimit ?? 30} most recent bookmarks and sort them into topics, threads, repos and papers, with real progress.`, icon: <Search size={18} /> },
               ]
             : [
                 { n: '01', t: 'Copy', d: 'Open your bookmarks on X, select all and copy. Scroll and copy again to add more. No extension, no X login here.', icon: <ClipboardPaste size={18} /> },

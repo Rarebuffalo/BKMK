@@ -148,7 +148,7 @@ function AccountBox() {
       </div>
       <div className="mt-3 flex items-center justify-between font-mono text-[10px] text-paper-faint">
         <span className="flex items-center gap-1.5">
-          <span className={cx('size-1.5', result.coverage === 'complete' ? 'bg-phosphor' : 'bg-amber')} />
+          <span className={cx('size-1.5', result.coverage === 'partial' ? 'bg-amber' : 'bg-phosphor')} />
           {result.isDemo ? 'Demo session' : resultSource(result) === 'import' ? 'Imported · this device' : 'Connected'}
         </span>
         <SourceTag result={result} />

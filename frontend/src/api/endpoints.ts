@@ -9,6 +9,8 @@ export interface Me {
   apiMode: 'live' | 'fixture'
   /** Days of inactivity before the server deletes stored data; 0 = kept until deleted. */
   dataRetentionDays: number
+  /** How many of the newest bookmarks a live first scan reads. */
+  scanLimit: number
   user: { handle: string; displayName: string | null; profileImageUrl: string | null; lastScanAt: string | null } | null
   connection: { status: 'active' | 'expired' | 'revoked'; scopes: string[]; expiresAt: string | null } | null
   csrfToken: string | null

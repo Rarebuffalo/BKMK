@@ -108,7 +108,8 @@ export interface CollectionStats {
   newest?: string
 }
 
-export type ScanCoverage = 'complete' | 'partial'
+/** sample: a deliberate cap (the live starter scan reads only the newest N); partial: stopped early. */
+export type ScanCoverage = 'complete' | 'sample' | 'partial'
 
 /** Where a result came from. Optional for results saved before imports existed. */
 export type ResultSource = 'demo' | 'import' | 'live'

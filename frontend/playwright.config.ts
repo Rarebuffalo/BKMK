@@ -33,6 +33,9 @@ export default defineConfig({
         ENVIRONMENT: 'test',
         X_API_MODE: 'fixture',
         LIVE_SYNC_ENABLED: 'true',
+        // Journeys exercise the full-collection engine; the 30-newest starter scan is covered by backend tests.
+        SCAN_MAX_BOOKMARKS: '800',
+        X_EXPAND_AUTHORS: 'true',
         DATABASE_URL: process.env.E2E_DATABASE_URL ?? 'postgresql+psycopg://bkmk@localhost:54329/bkmk_e2e',
         SESSION_SECRET: 'e2e-session-secret-e2e-session-secret-000000',
         TOKEN_ENCRYPTION_KEY: 'MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=',

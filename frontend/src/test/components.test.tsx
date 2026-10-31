@@ -109,3 +109,25 @@ describe('Library search', () => {
     expect(input).toHaveValue('')
   })
 })
+
+describe('Live starter scan display', () => {
+  it('labels a capped scan as a sample of the newest bookmarks, not as partial or failed', async () => {
+    const { render } = await import('@testing-library/react')
+    const { CoverageLine } = await import('../components/reveal/ReportParts')
+    const { sampleResult } = await import('../data/sample')
+    const base = sampleResult()
+    const result = { ...base, isDemo: false, source: 'live' as const, coverage: 'sample' as const, coverageNote: 'Your Bookmark DNA is based on your 30 most recent bookmarks.' }
+    render(<CoverageLine result={result} />)
+    expect(screen.getByText(/starter scan · newest/i)).toBeInTheDocument()
+    expect(screen.getByText('Your Bookmark DNA is based on your 30 most recent bookmarks.')).toBeInTheDocument()
+    expect(screen.queryByText(/partial scan/i)).not.toBeInTheDocument()
+  })
+
+  it('shows the API’s “Author not loaded” instead of a fake handle', async () => {
+    const { BookmarkCard } = await import('../components/library/BookmarkCard')
+    const b = { id: '1', author: { handle: '', name: 'Author not loaded' }, text: 'Rust tips', createdAt: '2026-09-01T00:00:00Z', url: 'https://x.com/i/status/1', links: [], accessible: true, topic: 'engineering' as const, contentType: 'post' as const, matched: [] }
+    renderRoutes([{ path: '/', element: <BookmarkCard bookmark={b} isDemo={false} /> }], '/')
+    expect(screen.getByText('Author not loaded')).toBeInTheDocument()
+    expect(screen.queryByText(/^@/)).not.toBeInTheDocument()
+  })
+})
