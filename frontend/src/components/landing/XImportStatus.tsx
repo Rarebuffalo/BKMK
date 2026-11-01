@@ -1,4 +1,5 @@
 import { BellRing, Play } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { ButtonLink, buttonClass } from '../ui/Button'
 import { cx } from '../../lib/cx'
 import { accessUpdatesUrl, X_IMPORT_STATUS } from '../../lib/xAccess'
@@ -28,7 +29,12 @@ export function XImportStatus({ heading = 'h2', className }: { heading?: 'h1' | 
           Try the demo
         </ButtonLink>
       </div>
-      <p className="mt-3 font-mono text-[11px] text-paper-faint">The demo uses sample data and never contacts X.</p>
+      <p className="mt-3 font-mono text-[11px] text-paper-faint">
+        The demo uses sample data and never contacts X. Already have a bookmark export?{' '}
+        <Link to="/import?via=files" className="text-paper-dim underline decoration-dotted underline-offset-4 hover:text-phosphor">
+          Import a file
+        </Link>
+      </p>
     </section>
   )
 }

@@ -3,8 +3,8 @@
 
 export const X_IMPORT_STATUS = {
   eyebrow: 'X import · not enabled',
-  title: 'X bookmark import isn’t enabled yet',
-  body: 'We’re asking X for guidance and permission for a user-authorized way to import your bookmarks. X hasn’t approved it, so until then BKMK.exe doesn’t connect to your X account.',
+  title: 'Automatic X bookmark import isn’t enabled yet',
+  body: 'We’re preparing to seek guidance and permission from X before building this feature. X hasn’t approved it, so BKMK.exe doesn’t connect to your X account.',
 }
 
 /**
