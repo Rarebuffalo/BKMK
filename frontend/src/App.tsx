@@ -63,6 +63,16 @@ const router = createBrowserRouter([
       { path: '/connect', element: <ConnectPage /> },
       { path: '/import', element: <ImportPage /> },
       { path: '/scan', element: <ScanPage /> },
+      // Synthetic direct-import harness: development builds only, so production never ships it.
+      ...(import.meta.env.DEV
+        ? [
+            {
+              path: '/dev/import-harness',
+              hydrateFallbackElement: <div className="grid min-h-dvh place-items-center font-mono text-sm text-paper-dim">loading harness…</div>,
+              lazy: async () => ({ Component: (await import('./pages/ImportHarnessPage')).ImportHarnessPage }),
+            },
+          ]
+        : []),
       {
         element: <RequireResult />,
         children: [
