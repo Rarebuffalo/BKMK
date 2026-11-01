@@ -1,9 +1,10 @@
-import { ArrowRight, ClipboardPaste, EyeOff, KeyRound, Search, ShieldCheck, Trash2 } from 'lucide-react'
+import { ArrowRight, EyeOff, KeyRound, Play, Search, ShieldCheck, Trash2 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { AchievementBadge, ArchetypeEmblem, DnaStrip, RARITY_COLOR, Wordmark } from '../components/brand/Pixel'
 import { DemoLab } from '../components/brand/Demo'
 import { UsernameForm } from '../components/landing/UsernameForm'
+import { XImportStatus } from '../components/landing/XImportStatus'
 import { ShareCardCanvas } from '../components/share/ShareCardCanvas'
 import { ButtonLink } from '../components/ui/Button'
 import { sampleResult } from '../data/sample'
@@ -62,33 +63,34 @@ export function LandingPage() {
           <p className="mt-6 max-w-lg text-lg text-paper-dim">
             {liveAvailable
               ? 'Scan your X bookmarks. Find out what kind of collector you are, unlock badges, and finally search the things you saved.'
-              : 'Copy your X bookmarks page, paste it here, and find out what kind of collector you are. Unlock badges and search what you saved. Free, and nothing leaves your browser.'}
+              : 'Find out what kind of collector your X bookmarks say you are. Unlock badges, and finally search the things you saved.'}
           </p>
           <div className="mt-8 max-w-xl">
             {liveAvailable ? (
               <UsernameForm id="hero-handle" onChange={setTyped} mode={formMode} />
-            ) : (
-              <ButtonLink to="/import" variant="primary" size="lg" icon={<ClipboardPaste size={16} />}>
-                Get my Bookmark DNA — free
-              </ButtonLink>
+            ) : live.status === 'checking' ? null : (
+              <XImportStatus />
             )}
           </div>
-          <p className="mt-3 font-mono text-xs text-paper-faint">
-            {liveAvailable ? (
-              <>
-                Live scan reads your {live.me?.scanLimit ?? 30} most recent bookmarks. Rather not connect?{' '}
-                <Link to="/import" className="text-paper-dim underline decoration-dotted underline-offset-4 hover:text-phosphor">
-                  Import a file instead (free)
-                </Link>
-                {' · '}
-              </>
-            ) : live.status === 'checking' ? null : (
-              'Connect with X needs paid X API access, so live scanning opens once it’s funded. Until then, copying from X is free. '
-            )}
-            <Link to="/connect" state={{ handle: 'demo', mode: 'demo' }} className="text-paper-dim underline decoration-dotted underline-offset-4 hover:text-phosphor">
-              Try the demo profile (sample data) →
-            </Link>
-          </p>
+          {liveAvailable ? (
+            <p className="mt-3 font-mono text-xs text-paper-faint">
+              Live scan reads your {live.me?.scanLimit ?? 30} most recent bookmarks. Rather not connect?{' '}
+              <Link to="/import" className="text-paper-dim underline decoration-dotted underline-offset-4 hover:text-phosphor">
+                Import a file instead (free)
+              </Link>
+              {' · '}
+              <Link to="/connect" state={{ handle: 'demo', mode: 'demo' }} className="text-paper-dim underline decoration-dotted underline-offset-4 hover:text-phosphor">
+                Try the demo profile (sample data) →
+              </Link>
+            </p>
+          ) : live.status === 'checking' ? null : (
+            <p className="mt-3 font-mono text-xs text-paper-faint">
+              Already have a bookmark export?{' '}
+              <Link to="/import" className="text-paper-dim underline decoration-dotted underline-offset-4 hover:text-phosphor">
+                Import a file
+              </Link>
+            </p>
+          )}
         </div>
 
         <div className="relative lg:pl-4">
@@ -131,8 +133,8 @@ export function LandingPage() {
                 { n: '02', t: 'Scan', d: `We read your ${live.me?.scanLimit ?? 30} most recent bookmarks and sort them into topics, threads, repos and papers, with real progress.`, icon: <Search size={18} /> },
               ]
             : [
-                { n: '01', t: 'Copy', d: 'Open your bookmarks on X, select all and copy. Scroll and copy again to add more. No extension, no X login here.', icon: <ClipboardPaste size={18} /> },
-                { n: '02', t: 'Paste', d: 'Paste into BKMK.exe. Every post is sorted into topics and resource types by transparent rules, in your browser. No AI, no upload.', icon: <Search size={18} /> },
+                { n: '01', t: 'Connect', d: 'Authorize BKMK.exe to import your bookmarks. Not enabled yet: we’re asking X for permission first. Try the demo meanwhile.', icon: <KeyRound size={18} /> },
+                { n: '02', t: 'Analyse', d: 'Every bookmark is sorted into topics and resource types by transparent rules, with real progress. No AI.', icon: <Search size={18} /> },
               ]
           ).concat([
             { n: '03', t: 'Reveal', d: 'Get your collector archetype, Curation Score and badges. Share the card, then explore your library.', icon: <ArrowRight size={18} /> },
@@ -222,8 +224,8 @@ export function LandingPage() {
                     { i: <ShieldCheck size={18} />, t: 'Read-only', d: 'We request permission to read bookmarks and your profile. We can’t post, like or DM.' },
                   ]
                 : [
-                    { i: <ClipboardPaste size={18} />, t: 'Stays in your browser', d: 'What you paste is read and analysed on your device. Nothing is uploaded, and there’s no account to create.' },
-                    { i: <ShieldCheck size={18} />, t: 'No X login, no API', d: 'No password, no OAuth, no extension, no paid X API calls. BKMK.exe only sees what you paste.' },
+                    { i: <ShieldCheck size={18} />, t: 'No X access today', d: 'Bookmark import is off, so BKMK.exe doesn’t connect to your X account or call X’s API.' },
+                    { i: <KeyRound size={18} />, t: 'Permission first', d: 'We’re asking X for written guidance before building any import. We’ll never ask for your X password.' },
                   ]),
               { i: <EyeOff size={18} />, t: 'Private by default', d: 'Your library is only visible to you. Share cards show totals and badges — never bookmark contents.' },
               { i: <Trash2 size={18} />, t: 'Leave anytime', d: 'Disconnect and delete your data from settings. One click, no email required.' },
@@ -247,8 +249,8 @@ export function LandingPage() {
             <UsernameForm id="footer-handle" compact mode={formMode} />
           ) : (
             <div className="text-center">
-              <ButtonLink to="/import" variant="primary" size="lg" icon={<ClipboardPaste size={16} />}>
-                Get my Bookmark DNA — free
+              <ButtonLink to="/connect" state={{ handle: 'demo', mode: 'demo' }} variant="primary" size="lg" icon={<Play size={16} />}>
+                Try the demo
               </ButtonLink>
             </div>
           )}

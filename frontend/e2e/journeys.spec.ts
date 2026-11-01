@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { syntheticRecords } from '../src/import/mockBridge'
 
 // ── helpers ────────────────────────────────────────────────────────────────
 
@@ -115,16 +116,87 @@ test('copy from X → paste screens → instant reveal, with no X or API calls',
   expect(calls).toEqual([])
 })
 
-test('with live sync off, the landing page leads with the free import', async ({ page }) => {
+test('with live sync off, Connect with X says import isn’t enabled and the demo still works', async ({ page }) => {
+  const xCalls: string[] = []
+  page.on('request', (r) => {
+    if (/\/\/([a-z]+\.)?(x|twitter)\.com\//.test(r.url()) || r.url().includes('/api/auth/x')) xCalls.push(r.url())
+  })
   await page.route('**/api/auth/me', (route) =>
     route.fulfill({ json: { authenticated: false, xConfigured: false, liveSyncEnabled: false, apiMode: 'live', dataRetentionDays: 90, user: null, connection: null, csrfToken: null } }),
   )
   await page.goto('/')
-  await expect(page.getByText(/live scanning opens once it’s funded/i)).toBeVisible()
+  await expect(page.getByRole('heading', { name: /x bookmark import isn’t enabled yet/i })).toBeVisible()
+  await expect(page.getByText(/asking x for guidance and permission/i)).toBeVisible()
   await expect(page.locator('#hero-handle')).toHaveCount(0)
-  await page.getByRole('link', { name: /get my bookmark dna — free/i }).first().click()
-  await expect(page).toHaveURL(/\/import$/)
-  await expect(page.getByRole('tab', { name: /copy from x/i })).toHaveAttribute('aria-selected', 'true')
+  await page.getByRole('link', { name: /try the demo/i }).first().click()
+  await expect(page).toHaveURL(/\/connect$/)
+  await expect(page.getByText(/demo identity/i)).toBeVisible()
+  expect(xCalls).toEqual([])
+})
+
+// ── direct import (dev harness, synthetic source; nothing contacts X) ─────
+
+test('direct import: mock source → progress → analysis → reveal → searchable library', async ({ page }) => {
+  const xCalls: string[] = []
+  page.on('request', (r) => {
+    if (/\/\/([a-z]+\.)?(x|twitter)\.com\//.test(r.url()) || r.url().includes('/api/auth/x') || r.url().includes('/api/scans')) xCalls.push(r.url())
+  })
+  const first = syntheticRecords(40)[0]
+  await page.goto('/dev/import-harness')
+  await expect(page.getByText(/nothing here contacts x/i)).toBeVisible()
+  await page.getByLabel('Scenario').selectOption('small')
+  await page.getByLabel('Batch size').selectOption('10')
+  await page.getByRole('button', { name: /start import/i }).click()
+  await expect(page.getByRole('progressbar', { name: 'Import progress' })).toBeVisible()
+  await expect(page.getByText(/complete import: the source sent everything/i)).toBeVisible()
+  await expect(page.getByText('4 batches')).toBeVisible()
+  await page.getByRole('button', { name: /analyse 40 bookmarks/i }).click()
+  await expect(page).toHaveURL(/\/scan$/)
+  await expect(page.getByText('IMPORTED').first()).toBeVisible()
+  await expect(page).toHaveURL(/\/reveal$/, { timeout: 20_000 })
+  await page.getByRole('button', { name: /skip/i }).click().catch(() => {})
+  await page.goto('/app/library')
+  const term = first.text!.split(/\s+/).slice(0, 3).join(' ')
+  await page.getByLabel('Search bookmarks').pressSequentially(term, { delay: 20 })
+  await expect(page.getByText(term, { exact: false }).first()).toBeVisible()
+  expect(xCalls).toEqual([])
+})
+
+test('direct import: duplicates and invalid records are counted, not imported', async ({ page }) => {
+  await page.goto('/dev/import-harness')
+  await page.getByLabel('Scenario').selectOption('invalid')
+  await page.getByRole('button', { name: /start import/i }).click()
+  await expect(page.getByText(/complete import/i)).toBeVisible()
+  const counts = page.locator('dl')
+  await expect(counts.getByText('Invalid rejected').locator('..')).toContainText('8')
+  await expect(counts.getByText('Valid', { exact: true }).locator('..')).toContainText('100')
+  await page.getByText(/why 8 records were rejected/i).click()
+  await expect(page.getByText(/unexpected field "extra"/)).toBeVisible()
+
+  await page.getByLabel('Scenario').selectOption('duplicates')
+  await page.getByRole('button', { name: /start import/i }).click()
+  await expect(counts.getByText('Duplicates skipped').locator('..')).toContainText('40')
+  await expect(page.getByRole('button', { name: /analyse 150 bookmarks/i })).toBeVisible()
+})
+
+test('direct import: an interrupted import is labelled partial all the way to the reveal', async ({ page }) => {
+  await page.goto('/dev/import-harness')
+  await page.getByLabel('Scenario').selectOption('interrupted')
+  await page.getByRole('button', { name: /start import/i }).click()
+  await expect(page.getByText(/partial import\./i)).toBeVisible()
+  await expect(page.getByText(/connection to the import source was lost/i)).toBeVisible()
+  await page.getByRole('button', { name: /analyse partial import \(150\)/i }).click()
+  await expect(page).toHaveURL(/\/reveal$/, { timeout: 20_000 })
+  await expect(page.getByText(/partial import: it stopped early/i).first()).toBeVisible()
+})
+
+test('direct import: a source on the wrong schema version is refused', async ({ page }) => {
+  await page.goto('/dev/import-harness')
+  await page.getByLabel('Scenario').selectOption('wrong_version')
+  await page.getByRole('button', { name: /start import/i }).click()
+  await expect(page.getByText(/the import didn’t start/i)).toBeVisible()
+  await expect(page.getByText(/format version bkmk\.exe doesn’t support/i)).toBeVisible()
+  await expect(page.getByRole('button', { name: /analyse/i })).toHaveCount(0)
 })
 
 test('import: malformed and empty files show clear errors and recover', async ({ page }) => {

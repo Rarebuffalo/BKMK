@@ -7,7 +7,7 @@ import type { ImportInfo, RawBookmark } from '../domain/types'
 /** What the imported items are. X's archive has Likes, not bookmarks. */
 export type ImportKind = 'likes' | 'bookmarks'
 
-export type ImportFormat = 'x-archive' | 'json' | 'csv' | 'html' | 'text' | 'paste'
+export type ImportFormat = 'x-archive' | 'json' | 'csv' | 'html' | 'text' | 'paste' | 'extension'
 
 export interface ImportItem {
   id: string

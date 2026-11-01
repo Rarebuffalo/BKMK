@@ -224,6 +224,7 @@ If **(e)** fails because there's no cookie after sign-in, stop and tell me. The 
 | Variable | Purpose | Secret? | Required | Takes effect |
 |---|---|---|---|---|
 | `VITE_PUBLIC_URL` | Link in share captions and cards (defaults to the current origin) | Public: it's in the bundle | No | On a new Vercel deployment |
+| `VITE_ACCESS_UPDATES_URL` | Optional link behind "Request access updates" while X import is off (a form, newsletter or `mailto:` you control). Only `https:` and `mailto:` are shown; empty hides the button. | Public: it's in the bundle | No | On a new Vercel deployment |
 | `VITE_API_BASE` | API origin for split-origin setups. **Leave unset**: the rewrite makes it same-origin. | Public | No | On a new Vercel deployment |
 
 Never put a secret in a `VITE_*` variable; everything prefixed `VITE_` ships to every visitor.

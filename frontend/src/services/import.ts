@@ -8,11 +8,13 @@ import type { ScanEvent, ScanService } from './types'
 // network request is made, so it can't cost anything. Progress numbers are the
 // real count of posts processed; only the pacing is slowed so it's watchable.
 
-interface StagedImport {
+export interface StagedImport {
   handle: string
   displayName: string
   raw: RawBookmark[]
   info: ImportInfo
+  /** Set when the import itself stopped early, so the result is never presented as complete. */
+  partialNote?: string
 }
 
 let staged: StagedImport | null = null
@@ -30,7 +32,12 @@ const CHUNK = 100
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
 export function coverageNoteFor(info: ImportInfo): string {
-  const what = info.kind === 'likes' ? 'Likes from your X archive (X’s archive doesn’t include bookmarks)' : 'an imported bookmark list'
+  const what =
+    info.kind === 'likes'
+      ? 'Likes from your X archive (X’s archive doesn’t include bookmarks)'
+      : info.formats.includes('extension')
+        ? 'bookmarks received by direct import'
+        : 'an imported bookmark list'
   const gaps = [
     info.withText < info.total && `${info.total - info.withText} without post text (topics can’t be read from those)`,
     info.withAuthor < info.total && `${info.total - info.withAuthor} without author`,
@@ -85,8 +92,8 @@ export const importScanService: ScanService = {
         source: 'import',
         importInfo: job.info,
         raw: job.raw,
-        coverage: job.info.truncated ? 'partial' : 'complete',
-        coverageNote: coverageNoteFor(job.info),
+        coverage: job.partialNote || job.info.truncated ? 'partial' : 'complete',
+        coverageNote: job.partialNote ? `${job.partialNote} ${coverageNoteFor(job.info)}` : coverageNoteFor(job.info),
         scannedAt: new Date().toISOString(),
       })
       emit({ type: 'phase', phase: 'achievements' })
