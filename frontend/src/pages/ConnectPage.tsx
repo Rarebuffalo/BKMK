@@ -4,6 +4,7 @@ import { Navigate, useLocation, useNavigate, useSearchParams } from 'react-route
 import { api, startOAuthUrl } from '../api/endpoints'
 import { Avatar } from '../components/brand/Avatar'
 import { DemoLab, DemoTag, LiveTag } from '../components/brand/Demo'
+import { XImportStatus } from '../components/landing/XImportStatus'
 import { FlowLayout, Window } from '../components/scan/Window'
 import { Button, Spinner } from '../components/ui/Button'
 import { ErrorState } from '../components/ui/primitives'
@@ -130,7 +131,7 @@ function DemoConnect() {
                 </div>
                 {stage === 'authorizing' && (
                   <p className="mt-4 font-mono text-xs text-paper-faint" role="status">
-                    In production this step opens X’s authorization page. Demo mode simulates the response.
+                    Demo mode simulates X’s response. Real X import isn’t enabled yet.
                   </p>
                 )}
               </div>
@@ -170,8 +171,7 @@ function DemoConnect() {
 }
 
 const FAILURE_COPY: Record<string, string> = {
-  not_configured: 'Connect with X isn’t switched on yet: live scans use X’s paid API, so they open once the app is funded. Copy from X instead — it’s free.',
-  daily_budget: 'Today’s live scans are used up, so X wasn’t contacted. Try again after midnight UTC, or copy from X for free.',
+  daily_budget: 'Today’s live scans are used up, so X wasn’t contacted. Try again after midnight UTC, or try the demo.',
   state_mismatch: 'The sign-in link expired or was opened in a different browser. Start again from this page.',
   exchange_failed: 'X didn’t accept the sign-in. Try again in a moment.',
   provider_error: 'X reported an error during sign-in. Nothing was saved.',
@@ -218,7 +218,10 @@ function LiveConnect() {
   return (
     <FlowLayout step={stage === 'confirm' ? 1 : 2}>
       <div className="mx-auto w-full max-w-xl">
-        <Window title={stage === 'confirm' ? 'identify account' : 'authorize access'} status={<LiveTag />}>
+        <Window
+          title={stage === 'confirm' ? 'identify account' : reason === 'not_configured' ? 'connect with x' : 'authorize access'}
+          status={reason === 'not_configured' ? undefined : <LiveTag />}
+        >
           <div className="p-5 sm:p-7">
             {stage === 'confirm' && handle && (
               <div className="animate-rise">
@@ -262,18 +265,18 @@ function LiveConnect() {
               </div>
             )}
 
-            {stage === 'denied' && (
+            {stage === 'denied' && reason === 'not_configured' && <XImportStatus heading="h1" className="border-0 bg-transparent p-0" />}
+
+            {stage === 'denied' && reason !== 'not_configured' && (
               <ErrorState
                 code={`AUTH_${(reason || 'failed').toUpperCase()}`}
-                title={reason === 'not_configured' ? 'Live sign-in isn’t available' : 'Sign-in didn’t complete'}
+                title="Sign-in didn’t complete"
                 body={FAILURE_COPY[reason] ?? 'The authorization didn’t complete. Nothing was saved.'}
                 action={
                   <>
-                    {reason !== 'not_configured' && (
-                      <Button variant="primary" icon={<RotateCcw size={14} />} onClick={() => (handle ? setStage('authorize') : navigate('/'))}>
-                        Try again
-                      </Button>
-                    )}
+                    <Button variant="primary" icon={<RotateCcw size={14} />} onClick={() => (handle ? setStage('authorize') : navigate('/'))}>
+                      Try again
+                    </Button>
                     <Button onClick={() => navigate('/connect', { state: { handle: handle ?? 'demo', mode: 'demo' } })}>Try the demo</Button>
                   </>
                 }

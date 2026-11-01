@@ -115,16 +115,22 @@ test('copy from X → paste screens → instant reveal, with no X or API calls',
   expect(calls).toEqual([])
 })
 
-test('with live sync off, the landing page leads with the free import', async ({ page }) => {
+test('with live sync off, Connect with X says import isn’t enabled and the demo still works', async ({ page }) => {
+  const xCalls: string[] = []
+  page.on('request', (r) => {
+    if (/\/\/([a-z]+\.)?(x|twitter)\.com\//.test(r.url()) || r.url().includes('/api/auth/x')) xCalls.push(r.url())
+  })
   await page.route('**/api/auth/me', (route) =>
     route.fulfill({ json: { authenticated: false, xConfigured: false, liveSyncEnabled: false, apiMode: 'live', dataRetentionDays: 90, user: null, connection: null, csrfToken: null } }),
   )
   await page.goto('/')
-  await expect(page.getByText(/live scanning opens once it’s funded/i)).toBeVisible()
+  await expect(page.getByRole('heading', { name: /x bookmark import isn’t enabled yet/i })).toBeVisible()
+  await expect(page.getByText(/asking x for guidance and permission/i)).toBeVisible()
   await expect(page.locator('#hero-handle')).toHaveCount(0)
-  await page.getByRole('link', { name: /get my bookmark dna — free/i }).first().click()
-  await expect(page).toHaveURL(/\/import$/)
-  await expect(page.getByRole('tab', { name: /copy from x/i })).toHaveAttribute('aria-selected', 'true')
+  await page.getByRole('link', { name: /try the demo/i }).first().click()
+  await expect(page).toHaveURL(/\/connect$/)
+  await expect(page.getByText(/demo identity/i)).toBeVisible()
+  expect(xCalls).toEqual([])
 })
 
 test('import: malformed and empty files show clear errors and recover', async ({ page }) => {
