@@ -83,14 +83,7 @@ export function LandingPage() {
                 Try the demo profile (sample data) →
               </Link>
             </p>
-          ) : live.status === 'checking' ? null : (
-            <p className="mt-3 font-mono text-xs text-paper-faint">
-              Already have a bookmark export?{' '}
-              <Link to="/import" className="text-paper-dim underline decoration-dotted underline-offset-4 hover:text-phosphor">
-                Import a file
-              </Link>
-            </p>
-          )}
+          ) : null}
         </div>
 
         <div className="relative lg:pl-4">
@@ -133,7 +126,7 @@ export function LandingPage() {
                 { n: '02', t: 'Scan', d: `We read your ${live.me?.scanLimit ?? 30} most recent bookmarks and sort them into topics, threads, repos and papers, with real progress.`, icon: <Search size={18} /> },
               ]
             : [
-                { n: '01', t: 'Connect', d: 'Authorize BKMK.exe to import your bookmarks. Not enabled yet: we’re asking X for permission first. Try the demo meanwhile.', icon: <KeyRound size={18} /> },
+                { n: '01', t: 'Connect', d: 'Authorize BKMK.exe to import your bookmarks. Not enabled yet: we’re preparing to ask X for permission first. Try the demo meanwhile.', icon: <KeyRound size={18} /> },
                 { n: '02', t: 'Analyse', d: 'Every bookmark is sorted into topics and resource types by transparent rules, with real progress. No AI.', icon: <Search size={18} /> },
               ]
           ).concat([
@@ -225,7 +218,7 @@ export function LandingPage() {
                   ]
                 : [
                     { i: <ShieldCheck size={18} />, t: 'No X access today', d: 'Bookmark import is off, so BKMK.exe doesn’t connect to your X account or call X’s API.' },
-                    { i: <KeyRound size={18} />, t: 'Permission first', d: 'We’re asking X for written guidance before building any import. We’ll never ask for your X password.' },
+                    { i: <KeyRound size={18} />, t: 'Permission first', d: 'We’ll seek X’s written guidance before building any automatic import. We’ll never ask for your X password.' },
                   ]),
               { i: <EyeOff size={18} />, t: 'Private by default', d: 'Your library is only visible to you. Share cards show totals and badges — never bookmark contents.' },
               { i: <Trash2 size={18} />, t: 'Leave anytime', d: 'Disconnect and delete your data from settings. One click, no email required.' },

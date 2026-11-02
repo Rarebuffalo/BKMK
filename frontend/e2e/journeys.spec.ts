@@ -126,7 +126,7 @@ test('with live sync off, Connect with X says import isn’t enabled and the dem
   )
   await page.goto('/')
   await expect(page.getByRole('heading', { name: /x bookmark import isn’t enabled yet/i })).toBeVisible()
-  await expect(page.getByText(/asking x for guidance and permission/i)).toBeVisible()
+  await expect(page.getByText(/preparing to seek guidance and permission from x/i)).toBeVisible()
   await expect(page.locator('#hero-handle')).toHaveCount(0)
   await page.getByRole('link', { name: /try the demo/i }).first().click()
   await expect(page).toHaveURL(/\/connect$/)

@@ -6,7 +6,7 @@
 
 1. **Fill in every `[bracketed]` field.** This draft deliberately contains no names, company details or contact addresses. Use only details that are true.
 2. **Find the right channel yourself.** This draft doesn't include an X address. Use a contact or support route that X currently lists for developers, for example in the X Developer Console or on [docs.x.com](https://docs.x.com). Ask there whether policy questions should go to the Developer Platform team or to Legal.
-3. **Re-check the cited terms.** The quotes below were read on 2026-11-01. If X has updated its terms since, update the quotes and dates.
+3. **Re-check the cited terms and prices.** The quotes and prices below were read on 2026-11-01. If X has changed them since, update the figures and dates.
 4. **Keep the reply.** Store X's written answer, or a record that it didn't answer, next to this file. The import approach is chosen only after reviewing it.
 
 ---
@@ -31,9 +31,9 @@ Classification is rules-based and transparent; no AI model is trained on or fed 
 
 ### How it works today
 
-- **Official integration, built but switched off.** BKMK.exe has a complete OAuth 2.0 (PKCE) integration with `GET /2/users/{id}/bookmarks`, using the scopes `tweet.read users.read bookmark.read offline.access`. It's switched off because pay-per-use reads (about $0.005 per post and $0.010 per user read) aren't affordable for this project right now.
-- **What visitors can use instead:** a demo profile built from synthetic sample data, and a local import of files people already have. Neither contacts X.
-- **On the site:** "Connect with X" is clearly marked as not enabled, and the site says I'm asking X for guidance.
+- **Official integration, built but switched off.** BKMK.exe has a complete OAuth 2.0 (PKCE) integration with `GET /2/users/{id}/bookmarks`, using the scopes `tweet.read users.read bookmark.read offline.access`. It's switched off because pay-per-use reads aren't affordable for this project right now. When I checked X's pricing page on 1 Nov 2026, it listed $0.005 per post read and $0.010 per user read. Please correct me if those figures are out of date.
+- **What visitors can use instead:** a demo profile built from synthetic sample data, and local imports that run in the browser: files people already have, or text they copy by hand from their own X bookmarks page and paste in. None of these contacts X or automates anything on x.com.
+- **On the site:** "Connect with X" is clearly marked as not enabled, and the site says I'm preparing to ask X for guidance and permission.
 
 ### The experience I'd like to offer
 
@@ -64,7 +64,7 @@ That's why I'm asking before building anything.
 - **No credentials collected.** BKMK.exe would never ask for, store or transmit X passwords, two-factor codes, session cookies or tokens. Its servers would never receive them.
 - **Local first.** Bookmarks would be processed in the user's browser where possible. Anything sent to BKMK.exe would be limited to what the profile needs: post ID, post text, author handle and display name, post date, and link URLs. Media would not be downloaded.
 - **Gentle on X.** Requests paced to normal browsing, existing limits respected, and any rate limit, verification prompt or error treated as a hard stop, never worked around.
-- **User control.** One-click deletion of everything BKMK.exe holds. Stored data is already deleted automatically after 90 days of inactivity.
+- **User control.** One-click deletion of everything BKMK.exe holds. Today, server-side account data is deleted automatically after 90 days of inactivity, and locally imported data stays in the user's browser until they delete it.
 - **No resale or redistribution.** No selling, licensing, sharing with third parties, or training models on user content.
 - **Clear disclosure** to users of what is read, where it goes and how to remove it. Happy to show X the exact wording.
 - **Willing to stop or change** the method at any time if X asks.

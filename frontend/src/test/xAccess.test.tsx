@@ -30,9 +30,12 @@ describe('Connect with X while import is off', () => {
   it('the landing page says import isn’t enabled and leads to the demo, not a sign-in or paste flow', async () => {
     const user = userEvent.setup()
     const { router, container } = renderRoutes([{ path: '/', element: <LandingPage /> }], '/')
-    expect(await screen.findByRole('heading', { name: /x bookmark import isn’t enabled yet/i })).toBeInTheDocument()
-    expect(screen.getByText(/asking x for guidance and permission/i)).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: /automatic x bookmark import isn’t enabled yet/i })).toBeInTheDocument()
+    expect(screen.getByText(/preparing to seek guidance and permission from x/i)).toBeInTheDocument()
     expect(screen.queryByText(/x approved|approved by x/i)).toBeNull()
+    // The request hasn't been sent, so nothing may say we've already asked X.
+    expect(document.body.textContent).not.toMatch(/(we’re|we are|we’ve|we have) (asking|asked|contacted|requested)/i)
+    expect(screen.getByRole('link', { name: /import a file/i })).toHaveAttribute('href', '/import?via=files')
     expect(container.querySelector('#hero-handle')).toBeNull()
     expect(screen.queryByText(/copy your x bookmarks/i)).toBeNull()
     // No updates link unless the owner configured one.
@@ -55,6 +58,7 @@ describe('Connect with X while import is off', () => {
     renderRoutes([{ path: '/connect', element: <ConnectPage /> }], '/connect?auth=failed&reason=not_configured')
     expect(await screen.findByRole('heading', { level: 1, name: /x bookmark import isn’t enabled yet/i })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /try the demo/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /import a file/i })).toHaveAttribute('href', '/import?via=files')
     expect(screen.queryByRole('button', { name: /try again/i })).toBeNull()
     expect(screen.queryByText('LIVE')).toBeNull()
   })
